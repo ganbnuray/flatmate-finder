@@ -44,7 +44,13 @@ This project follows **GitHub Flow**. Please read [CONTRIBUTING.md](CONTRIBUTING
 
 | Member | Role |
 |--------|------|
-| *TBD* | *TBD* |
+| Nuray | BE/DB |
+| Ahmed | BE/DB |
+| Karolina | FE+UI/UX |
+| James | FE+UI/UX |
+| Aru | FE+UI/UX |
+| Dasha | PM |
+
 
 ## License
 
