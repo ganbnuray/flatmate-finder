@@ -13,6 +13,7 @@ CREATE TYPE sleep_schedule    AS ENUM ('early_bird', 'night_owl', 'flexible');
 CREATE TYPE guests_pref       AS ENUM ('rarely', 'sometimes', 'often', 'no_preference');
 CREATE TYPE noise_level       AS ENUM ('quiet', 'moderate', 'lively');
 CREATE TYPE like_action       AS ENUM ('LIKE', 'PASS');
+CREATE TYPE match_status      AS ENUM ('active', 'unmatched');
 CREATE TYPE report_reason     AS ENUM (
     'spam', 'harassment', 'fake_profile', 'inappropriate_content', 'other'
 );
@@ -78,7 +79,8 @@ CREATE TABLE matches (
     id         UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_a_id  UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     user_b_id  UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    status     match_status NOT NULL DEFAULT 'active',
+    created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
 
     UNIQUE (user_a_id, user_b_id),
     CHECK  (user_a_id < user_b_id)
