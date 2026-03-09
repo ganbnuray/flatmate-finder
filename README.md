@@ -1,43 +1,56 @@
-# Getting Started with Create React App
+# Flatmate Finder
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A web app that helps students and young professionals find compatible flatmates based on lifestyle preferences, budget, and living habits.
 
-## Available Scripts
+## Problem Statement
 
-In the project directory, you can run:
+Students and young professionals often struggle to find compatible flatmates through existing channels such as Facebook groups or generic housing platforms. These spaces are fragmented, hard to filter, and focus mostly on the room rather than the person — leading to mismatched lifestyles, wasted time, and uncomfortable living situations.
 
-### `npm start`
+Flatmate Finder is a structured, profile-driven platform that helps users quickly identify and connect with potential flatmates based on compatibility factors like budget, habits, and preferences.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Tech Stack
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18 (Create React App) |
+| Styling | Bootstrap 5 + custom CSS |
+| Backend | Flask (Python) — in progress |
+| Database | PostgreSQL — in progress |
 
-### `npm test`
+## Getting Started
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Prerequisites
 
-### `npm run build`
+- Node.js 18+
+- npm
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Installation
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```bash
+git clone https://github.com/ganbnuray/flatmate-finder.git
+cd flatmate-finder
+npm install
+npm start
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### `npm run eject`
+The frontend runs with simulated data — no backend required to demo the full user journey (register → onboard → discover → match → message).
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## Development Workflow
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+This project follows **GitHub Flow**. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before making any changes.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### Branch Naming Convention
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+| Type | Pattern | Example |
+|------|---------|---------|
+| Feature | `feature/<short-description>` | `feature/user-profile-page` |
+| Bug fix | `fix/<short-description>` | `fix/login-redirect` |
+| Setup/config | `setup/<short-description>` | `setup/ci-pipeline` |
+| Documentation | `docs/<short-description>` | `docs/api-endpoints` |
+
+## Team
 
 | Member | Role |
 |--------|------|
@@ -48,32 +61,6 @@ You don't have to ever use `eject`. The curated feature set is suitable for smal
 | Aru | FE+UI/UX |
 | Dasha | PM |
 
-## Learn More
+## License
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+This project is developed as part of the CS162 course at Minerva University.
