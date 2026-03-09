@@ -136,8 +136,23 @@ export default function ProfilePage() {
     setError('');
     setSaving(true);
 
+    const displayName = formData.display_name.trim();
+    const city = formData.city.trim();
+    if (!displayName) {
+      setSaving(false);
+      setError('Display name cannot be blank.');
+      return;
+    }
+    if (!city) {
+      setSaving(false);
+      setError('City cannot be blank.');
+      return;
+    }
+
     const result = await updateProfile({
       ...formData,
+      display_name: displayName,
+      city,
       age: parseInt(formData.age, 10),
       budget_min: parseInt(formData.budget_min, 10),
       budget_max: parseInt(formData.budget_max, 10),

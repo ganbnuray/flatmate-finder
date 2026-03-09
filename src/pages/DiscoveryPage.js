@@ -9,7 +9,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Button } from 'react-bootstrap';
+import { Container, Row, Col, Button, Alert } from 'react-bootstrap';
 import { useApi } from '../contexts/ApiProvider';
 import ProfileCard from '../components/ProfileCard';
 
@@ -17,11 +17,12 @@ import ProfileCard from '../components/ProfileCard';
  * Renders the discovery feed with one profile card at a time.
  *
  * State:
- *   profiles    — the full list of unseen profiles from the API.
+ *   profiles     — the full list of unseen profiles from the API.
  *   currentIndex — which profile in the list is currently shown.
- *   loading     — true while the initial fetch is in flight.
- *   showMatch   — true for 2 seconds after a mutual like to show the overlay.
- *   matchName   — the matched user's display name for the overlay.
+ *   loading      — true while the initial fetch is in flight.
+ *   showMatch    — true for 2 seconds after a mutual like to show the overlay.
+ *   matchName    — the matched user's display name for the overlay.
+ *   actionError  — non-empty string when a like/pass API call fails.
  *
  * @returns {JSX.Element} The discovery feed page.
  */
@@ -34,6 +35,7 @@ export default function DiscoveryPage() {
   const [loading, setLoading] = useState(true);
   const [showMatch, setShowMatch] = useState(false);
   const [matchName, setMatchName] = useState('');
+  const [actionError, setActionError] = useState('');
 
   // Fetch profiles once on mount.
   useEffect(() => {
@@ -50,23 +52,31 @@ export default function DiscoveryPage() {
    * Advances to the next profile in the list.
    */
   function advanceCard() {
+    setActionError('');
     setCurrentIndex((prev) => prev + 1);
   }
 
   /**
    * Records a Pass action and advances to the next profile.
+   * Does not advance if the API call fails, to avoid silently losing the
+   * profile from the feed without the pass being persisted.
    *
    * @returns {Promise<void>}
    */
   async function handlePass() {
     const profile = profiles[currentIndex];
-    await api.passProfile(profile.user_id);
-    advanceCard();
+    const response = await api.passProfile(profile.user_id);
+    if (response.ok) {
+      advanceCard();
+    } else {
+      setActionError('Failed to record pass. Please try again.');
+    }
   }
 
   /**
    * Records a Like action. If a mutual match is created, shows the match
-   * overlay for 2 seconds before advancing.
+   * overlay for 2 seconds before advancing. Does not advance if the API
+   * call fails.
    *
    * @returns {Promise<void>}
    */
@@ -74,7 +84,12 @@ export default function DiscoveryPage() {
     const profile = profiles[currentIndex];
     const response = await api.likeProfile(profile.user_id);
 
-    if (response.ok && response.body.matched) {
+    if (!response.ok) {
+      setActionError('Failed to record like. Please try again.');
+      return;
+    }
+
+    if (response.body.matched) {
       setMatchName(profile.display_name);
       setShowMatch(true);
       setTimeout(() => {
@@ -105,6 +120,16 @@ export default function DiscoveryPage() {
       )}
 
       <Container>
+        {actionError && (
+          <Row className="justify-content-center mt-3">
+            <Col xs={12} sm={10} md={8} lg={6}>
+              <Alert variant="danger" dismissible onClose={() => setActionError('')}>
+                {actionError}
+              </Alert>
+            </Col>
+          </Row>
+        )}
+
         {loading && (
           <Row className="justify-content-center">
             <Col className="text-center py-5">

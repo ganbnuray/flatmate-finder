@@ -73,6 +73,17 @@ export default function OnboardingPage() {
     event.preventDefault();
     setError('');
 
+    const displayName = formData.display_name.trim();
+    const city = formData.city.trim();
+    if (!displayName) {
+      setError('Display name cannot be blank.');
+      return;
+    }
+    if (!city) {
+      setError('City cannot be blank.');
+      return;
+    }
+
     const age = parseInt(formData.age, 10);
     if (isNaN(age) || age < 18 || age > 100) {
       setError('Age must be between 18 and 100.');
@@ -89,6 +100,8 @@ export default function OnboardingPage() {
     setSaving(true);
     const result = await updateProfile({
       ...formData,
+      display_name: displayName,
+      city,
       age,
       budget_min: budgetMin,
       budget_max: budgetMax,

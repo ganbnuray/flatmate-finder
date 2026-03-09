@@ -41,9 +41,16 @@ export default function UserProvider({ children }) {
   const api = useApi();
 
   // Restore session from localStorage on initial mount.
+  // Wrapped in try/catch: if the stored value is corrupted or partially
+  // written, JSON.parse throws and we fall back to unauthenticated rather
+  // than crashing the app on mount.
   useEffect(() => {
     const stored = localStorage.getItem('flatmate_auth');
-    setUser(stored ? JSON.parse(stored) : null);
+    try {
+      setUser(stored ? JSON.parse(stored) : null);
+    } catch {
+      setUser(null);
+    }
   }, []);
 
   /**
