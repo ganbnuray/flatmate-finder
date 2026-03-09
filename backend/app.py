@@ -331,5 +331,90 @@ def get_matches():
         cur.close()
         conn.close()
 
+@app.route("/matches/<match_id>/messages", methods=["GET"])
+def get_messages(match_id):
+    if "user_id" not in session:
+        return jsonify({"error": "unauthorized"}), 401
+        
+    current_user_id = session["user_id"]
+    conn = get_db_connection()
+    cur = get_db_cursor(conn)
+    
+    try:
+        # Validate that the match exists, is active, and the current user is part of it
+        cur.execute("""
+            SELECT id FROM matches 
+            WHERE id = %s AND status = 'active'
+            AND (user_a_id = %s OR user_b_id = %s)
+        """, (match_id, current_user_id, current_user_id))
+        
+        match = cur.fetchone()
+        if not match:
+            return jsonify({"error": "match not found or unauthorized"}), 404
+
+        # Fetch messages for this match
+        cur.execute("""
+            SELECT id, sender_id, body, created_at 
+            FROM messages 
+            WHERE match_id = %s 
+            ORDER BY created_at ASC
+        """, (match_id,))
+        
+        messages = cur.fetchall()
+        return jsonify([dict(m) for m in messages]), 200
+        
+    except Exception as e:
+        return jsonify({"error": "failed to load messages", "details": str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
+@app.route("/matches/<match_id>/messages", methods=["POST"])
+def send_message(match_id):
+    if "user_id" not in session:
+        return jsonify({"error": "unauthorized"}), 401
+        
+    data = request.get_json()
+    if not data or not data.get("body") or len(data.get("body").strip()) == 0:
+        return jsonify({"error": "message body is required"}), 400
+        
+    body = data.get("body").strip()
+    if len(body) > 2000:
+        return jsonify({"error": "message body is too long"}), 400
+        
+    current_user_id = session["user_id"]
+    conn = get_db_connection()
+    cur = get_db_cursor(conn)
+    
+    try:
+        # Validate that the match exists, is active, and the current user is part of it
+        cur.execute("""
+            SELECT id FROM matches 
+            WHERE id = %s AND status = 'active'
+            AND (user_a_id = %s OR user_b_id = %s)
+        """, (match_id, current_user_id, current_user_id))
+        
+        match = cur.fetchone()
+        if not match:
+            return jsonify({"error": "match not found or unauthorized"}), 404
+
+        # Insert new message
+        cur.execute("""
+            INSERT INTO messages (match_id, sender_id, body) 
+            VALUES (%s, %s, %s)
+            RETURNING id, sender_id, body, created_at
+        """, (match_id, current_user_id, body))
+        
+        message = cur.fetchone()
+        conn.commit()
+        return jsonify(dict(message)), 201
+        
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": "failed to send message", "details": str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
+
 if __name__ == "__main__":
     app.run(debug=True)
