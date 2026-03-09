@@ -297,6 +297,39 @@ def pass_profile(target_user_id):
 
     return jsonify({"passed": True}), 201
 
+@app.route("/matches", methods=["GET"])
+def get_matches():
+    if "user_id" not in session:
+        return jsonify({"error": "unauthorized"}), 401
+        
+    current_user_id = session["user_id"]
+    conn = get_db_connection()
+    cur = get_db_cursor(conn)
+    
+    try:
+        # Fetch active matches for current user and resolve the partner's profile
+        query = """
+            SELECT m.id AS match_id, m.created_at AS match_created_at, p.*
+            FROM matches m
+            JOIN profiles p ON (
+                (m.user_a_id = p.user_id AND m.user_b_id = %s)
+                OR 
+                (m.user_b_id = p.user_id AND m.user_a_id = %s)
+            )
+            WHERE (m.user_a_id = %s OR m.user_b_id = %s)
+            AND m.status = 'active'
+            ORDER BY m.created_at DESC
+        """
+        cur.execute(query, (current_user_id, current_user_id, current_user_id, current_user_id))
+        matches = cur.fetchall()
+        
+        return jsonify({"matches": [dict(m) for m in matches]}), 200
+        
+    except Exception as e:
+        return jsonify({"error": "failed to load matches", "details": str(e)}), 500
+    finally:
+        cur.close()
+        conn.close()
 
 if __name__ == "__main__":
     app.run(debug=True)
