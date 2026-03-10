@@ -10,6 +10,7 @@
  * etc.) and base HTTP methods (get, post, put, delete) do not need to change.
  *
  * Real backend implementation of request() will be:
+ *   const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
  *   const response = await fetch(BASE_URL + options.url, {
  *     method: options.method,
  *     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
