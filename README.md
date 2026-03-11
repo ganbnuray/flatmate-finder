@@ -10,22 +10,32 @@ Flatmate Finder is a structured, profile-driven platform that helps users quickl
 
 ## Tech Stack
 
-*To be decided — see [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow.*
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18 (Create React App) |
+| Styling | Bootstrap 5 + custom CSS |
+| Backend | Flask (Python) — in progress |
+| Database | PostgreSQL — in progress |
 
 ## Getting Started
 
 ### Prerequisites
 
-*TBD once tech stack is decided.*
+- Node.js 18+
+- npm
 
 ### Installation
 
 ```bash
 git clone https://github.com/ganbnuray/flatmate-finder.git
 cd flatmate-finder
+npm install
+npm start
 ```
 
-Further setup instructions will be added as the project develops.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+The frontend runs with simulated data — no backend required to demo the full user journey (register → onboard → discover → match → message).
 
 ## Development Workflow
 
@@ -50,7 +60,6 @@ This project follows **GitHub Flow**. Please read [CONTRIBUTING.md](CONTRIBUTING
 | James | FE+UI/UX |
 | Aru | FE+UI/UX |
 | Dasha | PM |
-
 
 ## License
 
