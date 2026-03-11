@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Log In – Flatmate Finder</title>
+</head>
+<body>
+  <h1>Log In</h1>
+
+  {% if error %}
+    <p style="color:red;">{{ error }}</p>
+  {% endif %}
+
+  <form method="POST" action="/login">
+    <label>Email<br>
+      <input type="email" name="email" required autofocus>
+    </label><br><br>
+
+    <label>Password<br>
+      <input type="password" name="password" required>
+    </label><br><br>
+
+    <button type="submit">Log in</button>
+  </form>
+
+  <p>Don't have an account? <a href="/signup">Sign up</a></p>
+</body>
+</html>
