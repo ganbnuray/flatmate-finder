@@ -7,7 +7,7 @@
  * advancing. When all profiles have been seen, an empty state is shown.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Button, Alert } from 'react-bootstrap';
 import { useApi } from '../contexts/ApiProvider';
@@ -20,6 +20,7 @@ import ProfileCard from '../components/ProfileCard';
  *   profiles     — the full list of unseen profiles from the API.
  *   currentIndex — which profile in the list is currently shown.
  *   loading      — true while the initial fetch is in flight.
+ *   fetchError   — true if the initial profile fetch returned ok: false.
  *   showMatch    — true for 2 seconds after a mutual like to show the overlay.
  *   matchName    — the matched user's display name for the overlay.
  *   actionError  — non-empty string when a like/pass API call fails.
@@ -33,9 +34,13 @@ export default function DiscoveryPage() {
   const [profiles, setProfiles] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [showMatch, setShowMatch] = useState(false);
   const [matchName, setMatchName] = useState('');
   const [actionError, setActionError] = useState('');
+
+  // Ref to the active match timer so it can be cancelled on unmount.
+  const matchTimerRef = useRef(null);
 
   // Fetch profiles once on mount.
   useEffect(() => {
@@ -43,10 +48,19 @@ export default function DiscoveryPage() {
       const response = await api.getProfiles();
       if (response.ok) {
         setProfiles(response.body.profiles);
+      } else {
+        setFetchError(true);
       }
       setLoading(false);
     })();
   }, [api]);
+
+  // Cancel any pending match overlay timer when the component unmounts.
+  useEffect(() => {
+    return () => {
+      if (matchTimerRef.current) clearTimeout(matchTimerRef.current);
+    };
+  }, []);
 
   /**
    * Advances to the next profile in the list.
@@ -92,7 +106,7 @@ export default function DiscoveryPage() {
     if (response.body.matched) {
       setMatchName(profile.display_name);
       setShowMatch(true);
-      setTimeout(() => {
+      matchTimerRef.current = setTimeout(() => {
         setShowMatch(false);
         advanceCard();
       }, 2000);
@@ -102,11 +116,11 @@ export default function DiscoveryPage() {
   }
 
   const currentProfile = profiles[currentIndex];
-  const allSeen = !loading && currentIndex >= profiles.length;
+  const allSeen = !loading && !fetchError && currentIndex >= profiles.length;
 
   return (
     <div className="discovery-page">
-      {/* ── Match overlay ──────────────────────────────────────── */}
+      {/* Match overlay */}
       {showMatch && (
         <div className="match-overlay">
           <div className="match-overlay-content">
@@ -134,6 +148,18 @@ export default function DiscoveryPage() {
           <Row className="justify-content-center">
             <Col className="text-center py-5">
               <div className="text-muted-custom">Loading profiles…</div>
+            </Col>
+          </Row>
+        )}
+
+        {!loading && fetchError && (
+          <Row className="justify-content-center">
+            <Col xs={12} md={6} className="text-center py-5">
+              <div className="empty-state-icon">⚠️</div>
+              <h3 className="empty-state-title">Couldn&apos;t load profiles</h3>
+              <p className="text-muted-custom mb-4">
+                Something went wrong fetching profiles. Please refresh and try again.
+              </p>
             </Col>
           </Row>
         )}

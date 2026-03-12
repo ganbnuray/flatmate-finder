@@ -134,7 +134,7 @@ export default function OnboardingPage() {
             )}
 
             <Form onSubmit={handleSubmit}>
-              {/* ── Section: About You ──────────────────────────── */}
+              {/* Section: About You */}
               <Card className="onboarding-section mb-4">
                 <Card.Body>
                   <h5 className="onboarding-section-title">About you</h5>
@@ -194,7 +194,7 @@ export default function OnboardingPage() {
                 </Card.Body>
               </Card>
 
-              {/* ── Section: Budget ─────────────────────────────── */}
+              {/* Section: Budget */}
               <Card className="onboarding-section mb-4">
                 <Card.Body>
                   <h5 className="onboarding-section-title">Budget</h5>
@@ -229,7 +229,7 @@ export default function OnboardingPage() {
                 </Card.Body>
               </Card>
 
-              {/* ── Section: Lifestyle ──────────────────────────── */}
+              {/* Section: Lifestyle */}
               <Card className="onboarding-section mb-4">
                 <Card.Body>
                   <h5 className="onboarding-section-title">Lifestyle</h5>
@@ -320,7 +320,7 @@ export default function OnboardingPage() {
                 </Card.Body>
               </Card>
 
-              {/* ── Section: Bio ────────────────────────────────── */}
+              {/* Section: Bio */}
               <Card className="onboarding-section mb-4">
                 <Card.Body>
                   <h5 className="onboarding-section-title">Short bio</h5>

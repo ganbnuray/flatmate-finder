@@ -11,23 +11,27 @@
  *
  * Real backend implementation of request() will be:
  *   const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
- *   const response = await fetch(BASE_URL + options.url, {
- *     method: options.method,
- *     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
- *     credentials: 'include',   // Flask-Login session cookies
- *     body: options.body ? JSON.stringify(options.body) : null,
- *   });
- *   return {
- *     ok: response.ok,
- *     status: response.status,
- *     body: response.status !== 204 ? await response.json() : null,
- *   };
+ *   try {
+ *     const response = await fetch(BASE_URL + options.url, {
+ *       method: options.method,
+ *       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+ *       credentials: 'include',   // Flask-Login session cookies
+ *       body: options.body ? JSON.stringify(options.body) : null,
+ *     });
+ *     return {
+ *       ok: response.ok,
+ *       status: response.status,
+ *       body: response.status !== 204 ? await response.json() : null,
+ *     };
+ *   } catch {
+ *     return { ok: false, status: 0, body: { error: 'Network error' } };
+ *   }
  *
  * All field names and enum values in dummy data match db/schema.sql exactly
  * so the backend swap is seamless.
  */
 
-// ─── Schema enum values ────────────────────────────────────────────────────
+// Schema enum values
 // cleanliness_level: 'very_clean' | 'clean' | 'moderate' | 'relaxed'
 // smoking_pref:      'non_smoker' | 'outside_only' | 'smoker' | 'no_preference'
 // pets_pref:         'no_pets' | 'has_pets' | 'ok_with_pets' | 'no_preference'
@@ -36,7 +40,7 @@
 // guests_pref:       'rarely' | 'sometimes' | 'often' | 'no_preference'
 // noise_level:       'quiet' | 'moderate' | 'lively'
 
-// ─── Module-level dummy data ───────────────────────────────────────────────
+// Module-level dummy data
 
 const CURRENT_USER = {
   user_id: 'u-001',
@@ -276,7 +280,7 @@ const DUMMY_MESSAGES = {
   ],
 };
 
-// ─── FlatmateApiClient ─────────────────────────────────────────────────────
+// FlatmateApiClient
 
 export default class FlatmateApiClient {
   // Private mutable dummy state — mutated by like/sendMessage/updateProfile.
@@ -285,7 +289,7 @@ export default class FlatmateApiClient {
   #messagesByMatch = structuredClone(DUMMY_MESSAGES);
   #currentUserProfile = { ...CURRENT_USER };
 
-  // ─── Core routing method ──────────────────────────────────────────────────
+  // Core routing method
 
   /**
    * Routes a request to the appropriate dummy handler by HTTP method and URL.
@@ -348,19 +352,18 @@ export default class FlatmateApiClient {
     }
 
     // Messages
-    const messagesGetMatch = url.match(/^\/matches\/([\w-]+)\/messages$/);
-    if (method === 'GET' && messagesGetMatch) {
-      return this.#handleGetMessages(messagesGetMatch[1]);
+    const messagesMatch = url.match(/^\/matches\/([\w-]+)\/messages$/);
+    if (method === 'GET' && messagesMatch) {
+      return this.#handleGetMessages(messagesMatch[1]);
     }
-    const messagesPostMatch = url.match(/^\/matches\/([\w-]+)\/messages$/);
-    if (method === 'POST' && messagesPostMatch) {
-      return this.#handleSendMessage(messagesPostMatch[1], body);
+    if (method === 'POST' && messagesMatch) {
+      return this.#handleSendMessage(messagesMatch[1], body);
     }
 
     return { ok: false, status: 404, body: { error: 'Endpoint not found in dummy mode' } };
   }
 
-  // ─── Base HTTP verb methods ───────────────────────────────────────────────
+  // Base HTTP verb methods
 
   /**
    * Makes a GET request.
@@ -405,7 +408,7 @@ export default class FlatmateApiClient {
     return this.request({ method: 'DELETE', url });
   }
 
-  // ─── Domain methods ───────────────────────────────────────────────────────
+  // Domain methods
 
   /**
    * Logs in a user with email and password.
@@ -528,7 +531,7 @@ export default class FlatmateApiClient {
     return this.put('/profiles/me', profileData);
   }
 
-  // ─── Private dummy handlers ───────────────────────────────────────────────
+  // Private dummy handlers
 
   /**
    * Handles dummy user registration.

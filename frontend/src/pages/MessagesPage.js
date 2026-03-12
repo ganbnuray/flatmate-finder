@@ -17,11 +17,10 @@ import {
   Col,
   Form,
   Button,
+  Alert,
 } from 'react-bootstrap';
 import { useApi } from '../contexts/ApiProvider';
-
-/** The current user's ID — used to determine which message bubbles are "sent". */
-const CURRENT_USER_ID = 'u-001';
+import { useUser } from '../contexts/UserProvider';
 
 /**
  * Formats an ISO timestamp to a short time string (HH:MM).
@@ -44,11 +43,13 @@ function formatTime(isoString) {
  *   messages     — messages for the currently active match.
  *   newMessage   — the current value of the message input.
  *   sending      — true while a send request is in flight.
+ *   sendError    — non-empty string when a send API call fails.
  *
  * @returns {JSX.Element} The messages page.
  */
 export default function MessagesPage() {
   const api = useApi();
+  const { user } = useUser();
   const { matchId } = useParams();
   const navigate = useNavigate();
 
@@ -56,6 +57,7 @@ export default function MessagesPage() {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState('');
 
   // Ref to the bottom of the message list for auto-scroll.
   const threadEndRef = useRef(null);
@@ -92,7 +94,7 @@ export default function MessagesPage() {
   /**
    * Sends the current message and appends it to the thread on success.
    *
-   * @param {React.FormEvent} event - The form submit event.
+   * @param {Event} event - The form submit event.
    * @returns {Promise<void>}
    */
   const handleSend = useCallback(
@@ -100,6 +102,7 @@ export default function MessagesPage() {
       event.preventDefault();
       if (!newMessage.trim() || !matchId) return;
 
+      setSendError('');
       setSending(true);
       const response = await api.sendMessage(matchId, newMessage.trim());
       if (response.ok) {
@@ -112,6 +115,8 @@ export default function MessagesPage() {
           return [...prev, msg];
         });
         setNewMessage('');
+      } else {
+        setSendError('Failed to send message. Please try again.');
       }
       setSending(false);
     },
@@ -124,7 +129,7 @@ export default function MessagesPage() {
     <div className="messages-page">
       <Container fluid="lg">
         <Row className="messages-layout g-0">
-          {/* ── Left sidebar: match list ───────────────────────── */}
+          {/* Left sidebar: match list */}
           <Col md={4} lg={3} className="messages-sidebar">
             <div className="sidebar-header">
               <h5 className="sidebar-title">Messages</h5>
@@ -159,7 +164,7 @@ export default function MessagesPage() {
             </div>
           </Col>
 
-          {/* ── Right panel: message thread ────────────────────── */}
+          {/* Right panel: message thread */}
           <Col md={8} lg={9} className="messages-thread-panel">
             {!matchId && (
               <div className="thread-empty-state">
@@ -192,7 +197,7 @@ export default function MessagesPage() {
                 {/* Messages */}
                 <div className="thread-messages">
                   {messages.map((msg) => {
-                    const isSent = msg.sender_id === CURRENT_USER_ID;
+                    const isSent = msg.sender_id === user?.user_id;
                     return (
                       <div
                         key={msg.message_id}
@@ -213,6 +218,11 @@ export default function MessagesPage() {
 
                 {/* Input */}
                 <div className="thread-input-area">
+                  {sendError && (
+                    <Alert variant="danger" dismissible onClose={() => setSendError('')} className="mb-2">
+                      {sendError}
+                    </Alert>
+                  )}
                   <Form onSubmit={handleSend} className="d-flex gap-2">
                     <Form.Control
                       type="text"
