@@ -67,6 +67,7 @@ export default function MatchesPage() {
 
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   // Fetch matches on mount.
   useEffect(() => {
@@ -74,6 +75,8 @@ export default function MatchesPage() {
       const response = await api.getMatches();
       if (response.ok) {
         setMatches(response.body.matches);
+      } else {
+        setFetchError(true);
       }
       setLoading(false);
     })();
@@ -93,7 +96,17 @@ export default function MatchesPage() {
           <p className="text-muted-custom">Loading matches…</p>
         )}
 
-        {!loading && matches.length === 0 && (
+        {!loading && fetchError && (
+          <div className="text-center empty-state py-5">
+            <div className="empty-state-icon">⚠️</div>
+            <h3 className="empty-state-title">Couldn&apos;t load matches</h3>
+            <p className="text-muted-custom mb-4">
+              Something went wrong fetching your matches. Please refresh and try again.
+            </p>
+          </div>
+        )}
+
+        {!loading && !fetchError && matches.length === 0 && (
           <div className="text-center empty-state py-5">
             <div className="empty-state-icon">💫</div>
             <h3 className="empty-state-title">No matches yet</h3>

@@ -128,7 +128,7 @@ export default function ProfilePage() {
   /**
    * Submits the edited profile data via UserProvider's updateProfile.
    *
-   * @param {React.FormEvent} event - The form submit event.
+   * @param {Event} event - The form submit event.
    * @returns {Promise<void>}
    */
   async function handleSave(event) {
@@ -149,13 +149,38 @@ export default function ProfilePage() {
       return;
     }
 
+    const age = parseInt(formData.age, 10);
+    if (isNaN(age) || age < 18 || age > 100) {
+      setSaving(false);
+      setError('Age must be between 18 and 100.');
+      return;
+    }
+
+    const budgetMin = parseInt(formData.budget_min, 10);
+    const budgetMax = parseInt(formData.budget_max, 10);
+    if (isNaN(budgetMin) || budgetMin < 0) {
+      setSaving(false);
+      setError('Minimum budget must be a non-negative number.');
+      return;
+    }
+    if (isNaN(budgetMax) || budgetMax < 0) {
+      setSaving(false);
+      setError('Maximum budget must be a non-negative number.');
+      return;
+    }
+    if (budgetMin > budgetMax) {
+      setSaving(false);
+      setError('Minimum budget cannot exceed maximum budget.');
+      return;
+    }
+
     const result = await updateProfile({
       ...formData,
       display_name: displayName,
       city,
-      age: parseInt(formData.age, 10),
-      budget_min: parseInt(formData.budget_min, 10),
-      budget_max: parseInt(formData.budget_max, 10),
+      age,
+      budget_min: budgetMin,
+      budget_max: budgetMax,
     });
 
     setSaving(false);
@@ -175,7 +200,7 @@ export default function ProfilePage() {
       <Container>
         <Row className="justify-content-center">
           <Col xs={12} md={10} lg={8} xl={7}>
-            {/* ── Header ────────────────────────────────────────── */}
+            {/* Header */}
             <div className="d-flex align-items-center justify-content-between mb-4">
               <div className="d-flex align-items-center gap-3">
                 <div
@@ -212,7 +237,7 @@ export default function ProfilePage() {
               </Alert>
             )}
 
-            {/* ── Read mode ─────────────────────────────────────── */}
+            {/* Read mode */}
             {!editMode && (
               <>
                 <Card className="mb-3">
@@ -262,7 +287,7 @@ export default function ProfilePage() {
               </>
             )}
 
-            {/* ── Edit mode ─────────────────────────────────────── */}
+            {/* Edit mode */}
             {editMode && (
               <Form onSubmit={handleSave}>
                 <Card className="onboarding-section mb-3">
