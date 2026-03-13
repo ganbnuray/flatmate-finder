@@ -1,73 +1,61 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, make_response
 import psycopg2
-import os
-
-app = Flask(__name__)
+from services import like_service
 
 # temporary hardcoded user id until auth is done
 CURRENT_USER_ID = "00000000-0000-0000-0000-000000000001"
 
-def get_db():
-    return psycopg2.connect(os.environ.get("DATABASE_URL"))
 
-@app.route("/profiles/<target_user_id>/like", methods=["POST"])
-def like_profile(target_user_id):
-    conn = get_db()
-    cur = conn.cursor()
+def create_app():
+    app = Flask(__name__)
 
-    try:
-        cur.execute(
-            "INSERT INTO likes (liker_id, liked_id, action) VALUES (%s, %s, %s)",
-            (CURRENT_USER_ID, target_user_id, "LIKE")
-        )
-    except Exception:
-        conn.rollback()
-        return jsonify({"error": "already acted on this user"}), 409
+    @app.route("/profiles/<target_user_id>/like", methods=["POST"])
+    def like_profile(target_user_id):
+        """Records a like action for a target profile.
 
-    # check for mutual like
-    cur.execute(
-        "SELECT id FROM likes WHERE liker_id = %s AND liked_id = %s AND action = 'LIKE'",
-        (target_user_id, CURRENT_USER_ID)
-    )
-    mutual = cur.fetchone()
-    match_created = False
+        Args:
+            target_user_id: The UUID of the profile being liked.
 
-    if mutual:
-        user_a = min(CURRENT_USER_ID, target_user_id)
-        user_b = max(CURRENT_USER_ID, target_user_id)
-        cur.execute(
-            "INSERT INTO matches (user_a_id, user_b_id) VALUES (%s, %s)",
-            (user_a, user_b)
-        )
-        match_created = True
+        Returns:
+            JSON with key 'matched' set to True if a match was created, False otherwise.
 
-    conn.commit()
-    cur.close()
-    conn.close()
+        Raises:
+            400: If target_user_id is not a valid UUID.
+            409: If the current user has already acted on this profile.
+        """
+        try:
+            result = like_service.record_like(CURRENT_USER_ID, target_user_id)
+        except ValueError:
+            return make_response(jsonify({"error": "invalid user id"}), 400)
+        except psycopg2.IntegrityError:
+            return make_response(jsonify({"error": "already acted on this user"}), 409)
+        return make_response(jsonify(result), 201)
 
-    return jsonify({"matched": match_created}), 201
+    @app.route("/profiles/<target_user_id>/pass", methods=["POST"])
+    def pass_profile(target_user_id):
+        """Records a pass action for a target profile.
 
+        Args:
+            target_user_id: The UUID of the profile being passed.
 
-@app.route("/profiles/<target_user_id>/pass", methods=["POST"])
-def pass_profile(target_user_id):
-    conn = get_db()
-    cur = conn.cursor()
+        Returns:
+            JSON with key 'passed' set to True.
 
-    try:
-        cur.execute(
-            "INSERT INTO likes (liker_id, liked_id, action) VALUES (%s, %s, %s)",
-            (CURRENT_USER_ID, target_user_id, "PASS")
-        )
-    except Exception:
-        conn.rollback()
-        return jsonify({"error": "already acted on this user"}), 409
+        Raises:
+            400: If target_user_id is not a valid UUID.
+            409: If the current user has already acted on this profile.
+        """
+        try:
+            result = like_service.record_pass(CURRENT_USER_ID, target_user_id)
+        except ValueError:
+            return make_response(jsonify({"error": "invalid user id"}), 400)
+        except psycopg2.IntegrityError:
+            return make_response(jsonify({"error": "already acted on this user"}), 409)
+        return make_response(jsonify(result), 201)
 
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    return jsonify({"passed": True}), 201
+    return app
 
 
 if __name__ == "__main__":
+    app = create_app()
     app.run(debug=True)
