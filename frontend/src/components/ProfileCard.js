@@ -135,7 +135,7 @@ export default function ProfileCard({ profile, onLike, onPass }) {
         <div className="mb-3">
           <span className="profile-stat-label">Budget</span>
           <span className="profile-stat-value">
-            £{profile.budget_min.toLocaleString()} – £{profile.budget_max.toLocaleString()}
+            £{(profile.budget_min ?? 0).toLocaleString()} – £{(profile.budget_max ?? 0).toLocaleString()}
             /mo
           </span>
         </div>
