@@ -34,13 +34,13 @@ def record_like(current_user_id, target_user_id):
     try:
         cur.execute(
             "INSERT INTO likes (liker_id, liked_id, action) VALUES (%s, %s, %s)",
-            (current_user_id, target_user_id, "LIKE")
+            (current_user_id, target_user_id, "LIKE"),
         )
 
         # check for mutual like
         cur.execute(
             "SELECT id FROM likes WHERE liker_id = %s AND liked_id = %s AND action = 'LIKE'",
-            (target_user_id, current_user_id)
+            (target_user_id, current_user_id),
         )
         mutual = cur.fetchone()
         match_created = False
@@ -50,7 +50,7 @@ def record_like(current_user_id, target_user_id):
             user_b = max(current_user_id, target_user_id)
             cur.execute(
                 "INSERT INTO matches (user_a_id, user_b_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
-                (user_a, user_b)
+                (user_a, user_b),
             )
             match_created = True
 
@@ -88,7 +88,7 @@ def record_pass(current_user_id, target_user_id):
     try:
         cur.execute(
             "INSERT INTO likes (liker_id, liked_id, action) VALUES (%s, %s, %s)",
-            (current_user_id, target_user_id, "PASS")
+            (current_user_id, target_user_id, "PASS"),
         )
         conn.commit()
         return {"passed": True}
