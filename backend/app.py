@@ -37,7 +37,9 @@ def create_app():
     def add_cors_headers(response):
         response.headers["Access-Control-Allow-Origin"] = ALLOWED_ORIGIN
         response.headers["Access-Control-Allow-Credentials"] = "true"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Methods"] = (
+            "GET, POST, PUT, DELETE, OPTIONS"
+        )
         response.headers["Access-Control-Allow-Headers"] = "Content-Type"
         return response
 
@@ -45,7 +47,6 @@ def create_app():
     def handle_preflight():
         if request.method == "OPTIONS":
             return jsonify({}), 200
-
 
     @app.route("/auth/register", methods=["POST"])
     def register():
@@ -77,7 +78,6 @@ def create_app():
             return make_response(
                 jsonify({"error": "failed to register user", "details": str(e)}), 500
             )
-
 
     @app.route("/auth/login", methods=["POST"])
     def login():
@@ -112,7 +112,6 @@ def create_app():
                 jsonify({"error": "login failed", "details": str(e)}), 500
             )
 
-
     @app.route("/auth/logout", methods=["DELETE"])
     def logout():
         """Logs out the user by clearing the session.
@@ -122,7 +121,6 @@ def create_app():
         """
         session.pop("user_id", None)
         return make_response("", 204)
-
 
     @app.route("/profiles/me", methods=["GET"])
     def get_my_profile():
@@ -148,7 +146,6 @@ def create_app():
             return make_response(
                 jsonify({"error": "failed to fetch profile", "details": str(e)}), 500
             )
-
 
     @app.route("/profiles/me", methods=["POST", "PUT"])
     def upsert_profile():
@@ -198,7 +195,6 @@ def create_app():
                 jsonify({"error": "failed to save profile", "details": str(e)}), 500
             )
 
-
     @app.route("/profiles", methods=["GET"])
     def discover_profiles():
         """Retrieves a feed of candidate profiles excluding self, blocked, or acted-upon users.
@@ -225,7 +221,6 @@ def create_app():
                 500,
             )
 
-
     @app.route("/profiles/<target_user_id>/like", methods=["POST"])
     def like_profile(target_user_id):
         """Records a like action for a target profile.
@@ -251,7 +246,6 @@ def create_app():
             return make_response(jsonify({"error": "invalid user id"}), 400)
         except psycopg2.IntegrityError:
             return make_response(jsonify({"error": "already acted on this user"}), 409)
-
 
     @app.route("/profiles/<target_user_id>/pass", methods=["POST"])
     def pass_profile(target_user_id):
