@@ -118,7 +118,7 @@ export default function DiscoveryPage() {
   }
 
   const currentProfile = profiles[currentIndex];
-  const allSeen = !loading && currentIndex >= profiles.length;
+  const allSeen = !loading && !fetchError && currentIndex >= profiles.length;
 
   return (
     <div className="discovery-page">

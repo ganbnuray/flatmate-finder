@@ -93,7 +93,7 @@ export default function MatchesPage() {
           </Alert>
         )}
 
-        {!loading && matches.length === 0 && (
+        {!loading && !fetchError && matches.length === 0 && (
           <div className="text-center empty-state py-5">
             <div className="empty-state-icon">💫</div>
             <h3 className="empty-state-title">No matches yet</h3>
