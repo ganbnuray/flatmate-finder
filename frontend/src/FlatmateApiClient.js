@@ -301,63 +301,21 @@ export default class FlatmateApiClient {
    * @returns {Promise<{ok: boolean, status: number, body: Object|null}>}
    */
   async request(options) {
-    const { method, url, body } = options;
-
-    // Auth
-    if (method === 'POST' && url === '/auth/register') {
-      return this.#handleRegister(body);
+    const response = await fetch(options.url, {
+      method: options.method,
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      credentials: 'include',
+      body: options.body ? JSON.stringify(options.body) : null,
+    });
+    let body = null;
+    if (response.status !== 204) {
+      try {
+        body = await response.json();
+      } catch {
+        body = null;
+      }
     }
-    if (method === 'POST' && url === '/auth/login') {
-      return this.#handleLogin(body);
-    }
-    if (method === 'DELETE' && url === '/auth/logout') {
-      return { ok: true, status: 204, body: null };
-    }
-
-    // Profile
-    if (method === 'GET' && url === '/profiles/me') {
-      return { ok: true, status: 200, body: { user: { ...this.#currentUserProfile } } };
-    }
-    if (method === 'PUT' && url === '/profiles/me') {
-      return this.#handleUpdateProfile(body);
-    }
-
-    // Discovery feed
-    if (method === 'GET' && url === '/profiles') {
-      return this.#handleGetProfiles();
-    }
-
-    // Like / Pass
-    const likeMatch = url.match(/^\/profiles\/([\w-]+)\/like$/);
-    if (method === 'POST' && likeMatch) {
-      return this.#handleLike(likeMatch[1]);
-    }
-    const passMatch = url.match(/^\/profiles\/([\w-]+)\/pass$/);
-    if (method === 'POST' && passMatch) {
-      this.#likedProfileIds.add(passMatch[1]);
-      return { ok: true, status: 200, body: { passed: true } };
-    }
-
-    // Matches
-    if (method === 'GET' && url === '/matches') {
-      return {
-        ok: true,
-        status: 200,
-        body: { matches: [...DUMMY_MATCHES, ...this.#newMatches] },
-      };
-    }
-
-    // Messages
-    const messagesGetMatch = url.match(/^\/matches\/([\w-]+)\/messages$/);
-    if (method === 'GET' && messagesGetMatch) {
-      return this.#handleGetMessages(messagesGetMatch[1]);
-    }
-    const messagesPostMatch = url.match(/^\/matches\/([\w-]+)\/messages$/);
-    if (method === 'POST' && messagesPostMatch) {
-      return this.#handleSendMessage(messagesPostMatch[1], body);
-    }
-
-    return { ok: false, status: 404, body: { error: 'Endpoint not found in dummy mode' } };
+    return { ok: response.ok, status: response.status, body };
   }
 
   // ─── Base HTTP verb methods ───────────────────────────────────────────────

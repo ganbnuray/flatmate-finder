@@ -12,9 +12,8 @@
  * call the named operations — they never call api.anything() directly for
  * user-state mutations.
  *
- * Auth simulation: the user object is persisted to localStorage under
- * 'flatmate_auth'. When the Flask backend lands, replace localStorage
- * reads/writes with session cookie handling (credentials: 'include').
+ * Auth state is verified against the Flask backend on mount via GET /profiles/me.
+ * Session is maintained by the backend via cookies (credentials: 'include').
  */
 
 import {
@@ -40,18 +39,30 @@ export default function UserProvider({ children }) {
   const [user, setUser] = useState(undefined);
   const api = useApi();
 
-  // Restore session from localStorage on initial mount.
-  // Wrapped in try/catch: if the stored value is corrupted or partially
-  // written, JSON.parse throws and we fall back to unauthenticated rather
-  // than crashing the app on mount.
+  // Only verify session with the backend if there's a hint that a session exists.
+  // This avoids a 401 console error on every page load when the user is not logged in.
   useEffect(() => {
-    const stored = localStorage.getItem('flatmate_auth');
-    try {
-      setUser(stored ? JSON.parse(stored) : null);
-    } catch {
+    if (!localStorage.getItem('flatmate_session')) {
       setUser(null);
+      return;
     }
-  }, []);
+    async function checkSession() {
+      try {
+        const response = await api.getCurrentUser();
+        if (response.ok) {
+          setUser(response.body);
+        } else if (response.status === 404) {
+          setUser({ is_complete: false });
+        } else {
+          localStorage.removeItem('flatmate_session');
+          setUser(null);
+        }
+      } catch {
+        setUser(null);
+      }
+    }
+    checkSession();
+  }, [api]);
 
   /**
    * Logs in the user with the given credentials.
@@ -67,8 +78,14 @@ export default function UserProvider({ children }) {
     async (email, password) => {
       const response = await api.login(email, password);
       if (response.ok) {
-        localStorage.setItem('flatmate_auth', JSON.stringify(response.body.user));
-        setUser(response.body.user);
+        localStorage.setItem('flatmate_session', '1');
+        // Fetch profile to get full user data (including is_complete)
+        const profileResponse = await api.getCurrentUser();
+        if (profileResponse.ok) {
+          setUser({ email: response.body.email, ...profileResponse.body });
+        } else {
+          setUser({ user_id: response.body.user_id, email: response.body.email, is_complete: false });
+        }
         return { ok: true };
       }
       return { ok: false, error: 'Invalid email or password.' };
@@ -89,8 +106,8 @@ export default function UserProvider({ children }) {
     async (email, password) => {
       const response = await api.register(email, password);
       if (response.ok) {
-        localStorage.setItem('flatmate_auth', JSON.stringify(response.body.user));
-        setUser(response.body.user);
+        localStorage.setItem('flatmate_session', '1');
+        setUser({ user_id: response.body.user_id, email: response.body.email, is_complete: false });
         return { ok: true };
       }
       return { ok: false, error: 'Registration failed. Please try again.' };
@@ -105,7 +122,7 @@ export default function UserProvider({ children }) {
    */
   const logout = useCallback(async () => {
     await api.logout();
-    localStorage.removeItem('flatmate_auth');
+    localStorage.removeItem('flatmate_session');
     setUser(null);
   }, [api]);
 
@@ -123,9 +140,7 @@ export default function UserProvider({ children }) {
     async (profileData) => {
       const response = await api.updateProfile(profileData);
       if (response.ok) {
-        const updatedUser = response.body.user;
-        localStorage.setItem('flatmate_auth', JSON.stringify(updatedUser));
-        setUser(updatedUser);
+        setUser(prev => ({ ...prev, ...response.body }));
         return { ok: true };
       }
       return { ok: false, error: 'Failed to update profile. Please try again.' };

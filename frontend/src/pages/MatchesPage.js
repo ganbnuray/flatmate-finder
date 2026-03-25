@@ -17,6 +17,17 @@ import {
 } from 'react-bootstrap';
 import { useApi } from '../contexts/ApiProvider';
 
+const ACCENT_COLORS = ['#6366f1', '#10b981', '#ec4899', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6'];
+
+function getInitials(displayName) {
+  return (displayName || '').split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2);
+}
+
+function getAccentColor(userId) {
+  const hash = (userId || '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  return ACCENT_COLORS[hash % ACCENT_COLORS.length];
+}
+
 /**
  * Formats an ISO timestamp into a short relative display string.
  *
@@ -105,16 +116,16 @@ export default function MatchesPage() {
                     <div className="d-flex align-items-center gap-3 mb-3">
                       <div
                         className="profile-avatar-md"
-                        style={{ backgroundColor: match.matched_user_accent }}
+                        style={{ backgroundColor: getAccentColor(match.user_id) }}
                       >
-                        {match.matched_user_initials}
+                        {getInitials(match.display_name)}
                       </div>
                       <div className="overflow-hidden">
-                        <div className="fw-semibold text-truncate">
-                          {match.matched_user_name}
+                        <div className="fw-semibold text-truncate" style={{ color: 'var(--text-primary)' }}>
+                          {match.display_name}
                         </div>
                         <div className="text-muted-custom small">
-                          Matched {formatRelativeTime(match.last_message_at)}
+                          Matched {formatRelativeTime(match.match_created_at)}
                         </div>
                       </div>
                     </div>

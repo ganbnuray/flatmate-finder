@@ -19,9 +19,23 @@ import {
   Button,
 } from 'react-bootstrap';
 import { useApi } from '../contexts/ApiProvider';
+import { useUser } from '../contexts/UserProvider';
 
-/** The current user's ID — used to determine which message bubbles are "sent". */
-const CURRENT_USER_ID = 'u-001';
+const ACCENT_COLORS = ['#6366f1', '#10b981', '#ec4899', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6'];
+
+function getInitials(displayName) {
+  return (displayName || '')
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+function getAccentColor(userId) {
+  const hash = (userId || '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  return ACCENT_COLORS[hash % ACCENT_COLORS.length];
+}
 
 /**
  * Formats an ISO timestamp to a short time string (HH:MM).
@@ -49,6 +63,7 @@ function formatTime(isoString) {
  */
 export default function MessagesPage() {
   const api = useApi();
+  const { user } = useUser();
   const { matchId } = useParams();
   const navigate = useNavigate();
 
@@ -79,7 +94,7 @@ export default function MessagesPage() {
     (async () => {
       const response = await api.getMessages(matchId);
       if (response.ok) {
-        setMessages(response.body.messages);
+        setMessages(response.body);
       }
     })();
   }, [api, matchId]);
@@ -103,12 +118,9 @@ export default function MessagesPage() {
       setSending(true);
       const response = await api.sendMessage(matchId, newMessage.trim());
       if (response.ok) {
-        // Deduplicate by message_id: React 18 StrictMode can call the async
-        // setState callback twice in development (fast-remount behaviour), which
-        // would produce a duplicate without this guard.
         setMessages((prev) => {
-          const msg = response.body.message;
-          if (prev.some((m) => m.message_id === msg.message_id)) return prev;
+          const msg = response.body;
+          if (prev.some((m) => m.id === msg.id)) return prev;
           return [...prev, msg];
         });
         setNewMessage('');
@@ -144,12 +156,12 @@ export default function MessagesPage() {
                 >
                   <div
                     className="profile-avatar-sm"
-                    style={{ backgroundColor: match.matched_user_accent }}
+                    style={{ backgroundColor: getAccentColor(match.user_id) }}
                   >
-                    {match.matched_user_initials}
+                    {getInitials(match.display_name)}
                   </div>
                   <div className="sidebar-match-info">
-                    <div className="sidebar-match-name">{match.matched_user_name}</div>
+                    <div className="sidebar-match-name">{match.display_name}</div>
                     <div className="sidebar-match-preview">
                       {match.last_message || 'No messages yet'}
                     </div>
@@ -178,12 +190,12 @@ export default function MessagesPage() {
                     <div className="d-flex align-items-center gap-2">
                       <div
                         className="profile-avatar-sm"
-                        style={{ backgroundColor: activeMatch.matched_user_accent }}
+                        style={{ backgroundColor: getAccentColor(activeMatch.user_id) }}
                       >
-                        {activeMatch.matched_user_initials}
+                        {getInitials(activeMatch.display_name)}
                       </div>
                       <span className="fw-semibold">
-                        {activeMatch.matched_user_name}
+                        {activeMatch.display_name}
                       </span>
                     </div>
                   )}
@@ -192,10 +204,10 @@ export default function MessagesPage() {
                 {/* Messages */}
                 <div className="thread-messages">
                   {messages.map((msg) => {
-                    const isSent = msg.sender_id === CURRENT_USER_ID;
+                    const isSent = msg.sender_id === user?.user_id;
                     return (
                       <div
-                        key={msg.message_id}
+                        key={msg.id}
                         className={`message-row ${isSent ? 'sent' : 'received'}`}
                       >
                         <div className={`message-bubble ${isSent ? 'bubble-sent' : 'bubble-received'}`}>

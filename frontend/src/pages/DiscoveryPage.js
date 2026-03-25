@@ -42,11 +42,14 @@ export default function DiscoveryPage() {
     (async () => {
       const response = await api.getProfiles();
       if (response.ok) {
-        setProfiles(response.body.profiles);
+        setProfiles(response.body);
+      } else if (response.status === 403) {
+        navigate('/onboarding');
+        return;
       }
       setLoading(false);
     })();
-  }, [api]);
+  }, [api, navigate]);
 
   /**
    * Advances to the next profile in the list.
