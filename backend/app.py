@@ -1,17 +1,46 @@
 from flask import Flask, jsonify, request, session
+from flask.json.provider import DefaultJSONProvider
 import os
+import uuid
+from datetime import datetime, date
 import bcrypt
-from flask_cors import CORS
+import psycopg2
 from dotenv import load_dotenv
 from db import get_db_connection, get_db_cursor
 
-load_dotenv()
+load_dotenv(override=True)
+
+
+class JSONProvider(DefaultJSONProvider):
+    def default(self, obj):
+        if isinstance(obj, uuid.UUID):
+            return str(obj)
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        return super().default(obj)
+
 
 app = Flask(__name__)
+app.json_provider_class = JSONProvider
+app.json = JSONProvider(app)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev_secret_key")
 
-# Enable CORS, particularly allowing credentials (cookies) to be sent
-CORS(app, supports_credentials=True)
+ALLOWED_ORIGIN = "http://localhost:3000"
+
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = ALLOWED_ORIGIN
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return response
+
+
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        return jsonify({}), 200
 
 
 @app.route("/auth/register", methods=["POST"])
@@ -39,7 +68,7 @@ def register():
             "INSERT INTO users (email, password_hash) VALUES (%s, %s) RETURNING id",
             (email, password_hash),
         )
-        user_id = cur.fetchone()["id"]
+        user_id = str(cur.fetchone()["id"])
         conn.commit()
 
         session["user_id"] = user_id
@@ -93,12 +122,12 @@ def login():
         ):
             return jsonify({"error": "invalid email or password"}), 401
 
-        session["user_id"] = user["id"]
+        session["user_id"] = str(user["id"])
 
         return (
             jsonify(
                 {
-                    "user_id": user["id"],
+                    "user_id": str(user["id"]),
                     "email": user["email"],
                     "message": "logged in successfully",
                 }
@@ -381,11 +410,12 @@ def get_matches():
     try:
         # Fetch active matches for current user and resolve the partner's profile
         query = """
-            SELECT m.id AS match_id, m.created_at AS match_created_at, p.*
+            SELECT m.id AS match_id, m.created_at AS match_created_at, p.*,
+                (SELECT body FROM messages WHERE match_id = m.id ORDER BY created_at DESC LIMIT 1) AS last_message
             FROM matches m
             JOIN profiles p ON (
                 (m.user_a_id = p.user_id AND m.user_b_id = %s)
-                OR 
+                OR
                 (m.user_b_id = p.user_id AND m.user_a_id = %s)
             )
             WHERE (m.user_a_id = %s OR m.user_b_id = %s)
@@ -587,5 +617,4 @@ def report_user(target_user_id):
 
 
 if __name__ == "__main__":
-    app = create_app()
-    app.run(debug=True)
+    app.run(debug=True, port=5050)
