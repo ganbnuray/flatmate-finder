@@ -11,21 +11,17 @@
  *
  * Real backend implementation of request() will be:
  *   const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
- *   try {
- *     const response = await fetch(BASE_URL + options.url, {
- *       method: options.method,
- *       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
- *       credentials: 'include',   // Flask-Login session cookies
- *       body: options.body ? JSON.stringify(options.body) : null,
- *     });
- *     return {
- *       ok: response.ok,
- *       status: response.status,
- *       body: response.status !== 204 ? await response.json() : null,
- *     };
- *   } catch {
- *     return { ok: false, status: 0, body: { error: 'Network error' } };
- *   }
+ *   const response = await fetch(BASE_URL + options.url, {
+ *     method: options.method,
+ *     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+ *     credentials: 'include',   // Flask-Login session cookies
+ *     body: options.body ? JSON.stringify(options.body) : null,
+ *   });
+ *   return {
+ *     ok: response.ok,
+ *     status: response.status,
+ *     body: response.status !== 204 ? await response.json() : null,
+ *   };
  *
  * All field names and enum values in dummy data match db/schema.sql exactly
  * so the backend swap is seamless.
@@ -305,62 +301,21 @@ export default class FlatmateApiClient {
    * @returns {Promise<{ok: boolean, status: number, body: Object|null}>}
    */
   async request(options) {
-    const { method, url, body } = options;
-
-    // Auth
-    if (method === 'POST' && url === '/auth/register') {
-      return this.#handleRegister(body);
+    const response = await fetch(options.url, {
+      method: options.method,
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      credentials: 'include',
+      body: options.body ? JSON.stringify(options.body) : null,
+    });
+    let body = null;
+    if (response.status !== 204) {
+      try {
+        body = await response.json();
+      } catch {
+        body = null;
+      }
     }
-    if (method === 'POST' && url === '/auth/login') {
-      return this.#handleLogin(body);
-    }
-    if (method === 'DELETE' && url === '/auth/logout') {
-      return { ok: true, status: 204, body: null };
-    }
-
-    // Profile
-    if (method === 'GET' && url === '/profiles/me') {
-      return { ok: true, status: 200, body: { user: { ...this.#currentUserProfile } } };
-    }
-    if (method === 'PUT' && url === '/profiles/me') {
-      return this.#handleUpdateProfile(body);
-    }
-
-    // Discovery feed
-    if (method === 'GET' && url === '/profiles') {
-      return this.#handleGetProfiles();
-    }
-
-    // Like / Pass
-    const likeMatch = url.match(/^\/profiles\/([\w-]+)\/like$/);
-    if (method === 'POST' && likeMatch) {
-      return this.#handleLike(likeMatch[1]);
-    }
-    const passMatch = url.match(/^\/profiles\/([\w-]+)\/pass$/);
-    if (method === 'POST' && passMatch) {
-      this.#likedProfileIds.add(passMatch[1]);
-      return { ok: true, status: 200, body: { passed: true } };
-    }
-
-    // Matches
-    if (method === 'GET' && url === '/matches') {
-      return {
-        ok: true,
-        status: 200,
-        body: { matches: [...DUMMY_MATCHES, ...this.#newMatches] },
-      };
-    }
-
-    // Messages
-    const messagesMatch = url.match(/^\/matches\/([\w-]+)\/messages$/);
-    if (method === 'GET' && messagesMatch) {
-      return this.#handleGetMessages(messagesMatch[1]);
-    }
-    if (method === 'POST' && messagesMatch) {
-      return this.#handleSendMessage(messagesMatch[1], body);
-    }
-
-    return { ok: false, status: 404, body: { error: 'Endpoint not found in dummy mode' } };
+    return { ok: response.ok, status: response.status, body };
   }
 
   // Base HTTP verb methods

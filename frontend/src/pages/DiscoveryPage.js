@@ -20,10 +20,10 @@ import ProfileCard from '../components/ProfileCard';
  *   profiles     — the full list of unseen profiles from the API.
  *   currentIndex — which profile in the list is currently shown.
  *   loading      — true while the initial fetch is in flight.
- *   fetchError   — true if the initial profile fetch returned ok: false.
  *   showMatch    — true for 2 seconds after a mutual like to show the overlay.
  *   matchName    — the matched user's display name for the overlay.
  *   actionError  — non-empty string when a like/pass API call fails.
+ *   fetchError   — true when the initial profile fetch fails.
  *
  * @returns {JSX.Element} The discovery feed page.
  */
@@ -39,28 +39,30 @@ export default function DiscoveryPage() {
   const [matchName, setMatchName] = useState('');
   const [actionError, setActionError] = useState('');
 
-  // Ref to the active match timer so it can be cancelled on unmount.
   const matchTimerRef = useRef(null);
+
+  // Cancel the match overlay timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (matchTimerRef.current) clearTimeout(matchTimerRef.current);
+    };
+  }, []);
 
   // Fetch profiles once on mount.
   useEffect(() => {
     (async () => {
       const response = await api.getProfiles();
       if (response.ok) {
-        setProfiles(response.body.profiles);
+        setProfiles(response.body);
+      } else if (response.status === 403) {
+        navigate('/onboarding');
+        return;
       } else {
         setFetchError(true);
       }
       setLoading(false);
     })();
-  }, [api]);
-
-  // Cancel any pending match overlay timer when the component unmounts.
-  useEffect(() => {
-    return () => {
-      if (matchTimerRef.current) clearTimeout(matchTimerRef.current);
-    };
-  }, []);
+  }, [api, navigate]);
 
   /**
    * Advances to the next profile in the list.
@@ -116,7 +118,7 @@ export default function DiscoveryPage() {
   }
 
   const currentProfile = profiles[currentIndex];
-  const allSeen = !loading && !fetchError && currentIndex >= profiles.length;
+  const allSeen = !loading && currentIndex >= profiles.length;
 
   return (
     <div className="discovery-page">
@@ -155,11 +157,9 @@ export default function DiscoveryPage() {
         {!loading && fetchError && (
           <Row className="justify-content-center">
             <Col xs={12} md={6} className="text-center py-5">
-              <div className="empty-state-icon">⚠️</div>
-              <h3 className="empty-state-title">Couldn&apos;t load profiles</h3>
-              <p className="text-muted-custom mb-4">
-                Something went wrong fetching profiles. Please refresh and try again.
-              </p>
+              <Alert variant="danger">
+                Failed to load profiles. Please try again later.
+              </Alert>
             </Col>
           </Row>
         )}

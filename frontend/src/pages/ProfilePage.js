@@ -128,7 +128,7 @@ export default function ProfilePage() {
   /**
    * Submits the edited profile data via UserProvider's updateProfile.
    *
-   * @param {Event} event - The form submit event.
+   * @param {React.FormEvent} event - The form submit event.
    * @returns {Promise<void>}
    */
   async function handleSave(event) {

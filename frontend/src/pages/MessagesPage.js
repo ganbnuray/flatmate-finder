@@ -21,6 +21,7 @@ import {
 } from 'react-bootstrap';
 import { useApi } from '../contexts/ApiProvider';
 import { useUser } from '../contexts/UserProvider';
+import { getInitials, getAccentColor } from '../utils/avatarHelpers';
 
 /**
  * Formats an ISO timestamp to a short time string (HH:MM).
@@ -43,7 +44,6 @@ function formatTime(isoString) {
  *   messages     — messages for the currently active match.
  *   newMessage   — the current value of the message input.
  *   sending      — true while a send request is in flight.
- *   sendError    — non-empty string when a send API call fails.
  *
  * @returns {JSX.Element} The messages page.
  */
@@ -81,7 +81,7 @@ export default function MessagesPage() {
     (async () => {
       const response = await api.getMessages(matchId);
       if (response.ok) {
-        setMessages(response.body.messages);
+        setMessages(response.body);
       }
     })();
   }, [api, matchId]);
@@ -94,7 +94,7 @@ export default function MessagesPage() {
   /**
    * Sends the current message and appends it to the thread on success.
    *
-   * @param {Event} event - The form submit event.
+   * @param {React.FormEvent} event - The form submit event.
    * @returns {Promise<void>}
    */
   const handleSend = useCallback(
@@ -102,16 +102,13 @@ export default function MessagesPage() {
       event.preventDefault();
       if (!newMessage.trim() || !matchId) return;
 
-      setSendError('');
       setSending(true);
+      setSendError('');
       const response = await api.sendMessage(matchId, newMessage.trim());
       if (response.ok) {
-        // Deduplicate by message_id: React 18 StrictMode can call the async
-        // setState callback twice in development (fast-remount behaviour), which
-        // would produce a duplicate without this guard.
         setMessages((prev) => {
-          const msg = response.body.message;
-          if (prev.some((m) => m.message_id === msg.message_id)) return prev;
+          const msg = response.body;
+          if (prev.some((m) => m.id === msg.id)) return prev;
           return [...prev, msg];
         });
         setNewMessage('');
@@ -149,12 +146,12 @@ export default function MessagesPage() {
                 >
                   <div
                     className="profile-avatar-sm"
-                    style={{ backgroundColor: match.matched_user_accent }}
+                    style={{ backgroundColor: getAccentColor(match.user_id) }}
                   >
-                    {match.matched_user_initials}
+                    {getInitials(match.display_name)}
                   </div>
                   <div className="sidebar-match-info">
-                    <div className="sidebar-match-name">{match.matched_user_name}</div>
+                    <div className="sidebar-match-name">{match.display_name}</div>
                     <div className="sidebar-match-preview">
                       {match.last_message || 'No messages yet'}
                     </div>
@@ -183,12 +180,12 @@ export default function MessagesPage() {
                     <div className="d-flex align-items-center gap-2">
                       <div
                         className="profile-avatar-sm"
-                        style={{ backgroundColor: activeMatch.matched_user_accent }}
+                        style={{ backgroundColor: getAccentColor(activeMatch.user_id) }}
                       >
-                        {activeMatch.matched_user_initials}
+                        {getInitials(activeMatch.display_name)}
                       </div>
                       <span className="fw-semibold">
-                        {activeMatch.matched_user_name}
+                        {activeMatch.display_name}
                       </span>
                     </div>
                   )}
@@ -200,7 +197,7 @@ export default function MessagesPage() {
                     const isSent = msg.sender_id === user?.user_id;
                     return (
                       <div
-                        key={msg.message_id}
+                        key={msg.id}
                         className={`message-row ${isSent ? 'sent' : 'received'}`}
                       >
                         <div className={`message-bubble ${isSent ? 'bubble-sent' : 'bubble-received'}`}>
@@ -216,13 +213,20 @@ export default function MessagesPage() {
                   <div ref={threadEndRef} />
                 </div>
 
+                {/* Send error */}
+                {sendError && (
+                  <Alert
+                    variant="danger"
+                    dismissible
+                    onClose={() => setSendError('')}
+                    className="mx-3 mb-0"
+                  >
+                    {sendError}
+                  </Alert>
+                )}
+
                 {/* Input */}
                 <div className="thread-input-area">
-                  {sendError && (
-                    <Alert variant="danger" dismissible onClose={() => setSendError('')} className="mb-2">
-                      {sendError}
-                    </Alert>
-                  )}
                   <Form onSubmit={handleSend} className="d-flex gap-2">
                     <Form.Control
                       type="text"

@@ -14,19 +14,10 @@ import {
   Col,
   Card,
   Button,
+  Alert,
 } from 'react-bootstrap';
 import { useApi } from '../contexts/ApiProvider';
-
-const ACCENT_COLORS = ['#6366f1', '#10b981', '#ec4899', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6'];
-
-function getInitials(displayName) {
-  return (displayName || '').split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2);
-}
-
-function getAccentColor(userId) {
-  const hash = (userId || '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  return ACCENT_COLORS[hash % ACCENT_COLORS.length];
-}
+import { getInitials, getAccentColor } from '../utils/avatarHelpers';
 
 /**
  * Formats an ISO timestamp into a short relative display string.
@@ -97,16 +88,12 @@ export default function MatchesPage() {
         )}
 
         {!loading && fetchError && (
-          <div className="text-center empty-state py-5">
-            <div className="empty-state-icon">⚠️</div>
-            <h3 className="empty-state-title">Couldn&apos;t load matches</h3>
-            <p className="text-muted-custom mb-4">
-              Something went wrong fetching your matches. Please refresh and try again.
-            </p>
-          </div>
+          <Alert variant="danger">
+            Failed to load matches. Please try again later.
+          </Alert>
         )}
 
-        {!loading && !fetchError && matches.length === 0 && (
+        {!loading && matches.length === 0 && (
           <div className="text-center empty-state py-5">
             <div className="empty-state-icon">💫</div>
             <h3 className="empty-state-title">No matches yet</h3>
