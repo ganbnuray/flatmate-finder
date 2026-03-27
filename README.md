@@ -28,7 +28,7 @@ Flatmate Finder is a structured, profile-driven platform that helps users quickl
 
 ```bash
 git clone https://github.com/ganbnuray/flatmate-finder.git
-cd flatmate-finder
+cd flatmate-finder/frontend
 npm install
 npm start
 ```
