@@ -1,5 +1,5 @@
 import psycopg2
-from db import get_db, get_db_cursor
+from db import get_db, get_db_cursor, put_db_connection
 
 
 def block_user(current_user_id, target_user_id):
@@ -36,7 +36,7 @@ def block_user(current_user_id, target_user_id):
         raise e
     finally:
         cur.close()
-        conn.close()
+        put_db_connection(conn)
 
 
 def report_user(current_user_id, target_user_id, reason, details=""):
@@ -85,4 +85,4 @@ def report_user(current_user_id, target_user_id, reason, details=""):
         raise e
     finally:
         cur.close()
-        conn.close()
+        put_db_connection(conn)
