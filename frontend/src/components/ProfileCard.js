@@ -6,7 +6,7 @@
  * through props and never calls useApi(), useUser(), or fetch() directly.
  */
 
-import { Card, Button, Badge } from 'react-bootstrap';
+import { Card, Button, Badge, Dropdown } from 'react-bootstrap';
 import { getInitials, getAccentColor } from '../utils/avatarHelpers';
 
 /**
@@ -108,12 +108,27 @@ function housingLabel(value) {
  * @param {string} props.profile.accent_color - Hex colour for the avatar background.
  * @param {Function} props.onLike - Callback invoked when the Like button is clicked.
  * @param {Function} props.onPass - Callback invoked when the Pass button is clicked.
+ * @param {Function} [props.onBlock] - Optional callback to block the profile user.
  * @returns {JSX.Element} A styled Bootstrap Card.
  */
-export default function ProfileCard({ profile, onLike, onPass }) {
+export default function ProfileCard({ profile, onLike, onPass, onBlock }) {
   return (
     <Card className="profile-discovery-card mx-auto">
-      <Card.Body className="p-4">
+      <Card.Body className="p-4 position-relative">
+        {/* Actions Dropdown */}
+        {onBlock && (
+          <Dropdown className="position-absolute top-0 end-0 m-3">
+            <Dropdown.Toggle variant="link" className="text-muted p-0 border-0 fs-5 text-decoration-none">
+              ⋮
+            </Dropdown.Toggle>
+            <Dropdown.Menu align="end">
+              <Dropdown.Item onClick={onBlock} className="text-danger">
+                Block {profile.display_name}
+              </Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown>
+        )}
+
         {/* Avatar */}
         <div className="d-flex align-items-center gap-3 mb-4">
           <div

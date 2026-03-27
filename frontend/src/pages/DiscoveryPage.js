@@ -90,6 +90,23 @@ export default function DiscoveryPage() {
   }
 
   /**
+   * Blocks the user and advances to the next profile.
+   *
+   * @returns {Promise<void>}
+   */
+  async function handleBlock() {
+    const profile = profiles[currentIndex];
+    if (window.confirm(`Are you sure you want to block ${profile.display_name}? They won't appear in your feed again.`)) {
+      const response = await api.blockUser(profile.user_id);
+      if (response.ok) {
+        advanceCard();
+      } else {
+        setActionError('Failed to block user. Please try again.');
+      }
+    }
+  }
+
+  /**
    * Records a Like action. If a mutual match is created, shows the match
    * overlay for 2 seconds before advancing. Does not advance if the API
    * call fails.
@@ -195,6 +212,7 @@ export default function DiscoveryPage() {
                 profile={currentProfile}
                 onLike={handleLike}
                 onPass={handlePass}
+                onBlock={handleBlock}
               />
             </Col>
           </Row>

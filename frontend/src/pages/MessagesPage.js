@@ -18,10 +18,12 @@ import {
   Form,
   Button,
   Alert,
+  Dropdown,
 } from 'react-bootstrap';
 import { useApi } from '../contexts/ApiProvider';
 import { useUser } from '../contexts/UserProvider';
 import { getInitials, getAccentColor } from '../utils/avatarHelpers';
+import { useNavigate } from 'react-router-dom';
 
 /**
  * Formats an ISO timestamp to a short time string (HH:MM).
@@ -120,6 +122,47 @@ export default function MessagesPage() {
     [api, matchId, newMessage],
   );
 
+  const handleBlock = async () => {
+    if (!activeMatch) return;
+    if (window.confirm(`Are you sure you want to block ${activeMatch.display_name}? This conversation will be removed.`)) {
+      const response = await api.blockUser(activeMatch.user_id);
+      if (response.ok) {
+        // Remove match locally and navigate away from chat
+        setMatches((prev) => prev.filter((m) => m.match_id !== matchId));
+        navigate('/messages', { replace: true });
+      } else {
+        alert('Failed to block user. Please try again.');
+      }
+    }
+  };
+
+  const handleReport = async () => {
+    if (!activeMatch) return;
+    const reasonPrompt = window.prompt(
+      `Why are you reporting ${activeMatch.display_name}?\n\nOptions: spam, harassment, fake_profile, inappropriate_content, other`,
+      'other'
+    );
+    
+    if (!reasonPrompt) return; // User cancelled
+
+    const validReasons = ['spam', 'harassment', 'fake_profile', 'inappropriate_content', 'other'];
+    let reason = reasonPrompt.trim().toLowerCase();
+    
+    if (!validReasons.includes(reason)) {
+      alert(`Invalid reason. Must be one of: ${validReasons.join(', ')}`);
+      return;
+    }
+
+    const details = window.prompt('Please provide any additional details (optional):') || '';
+
+    const response = await api.reportUser(activeMatch.user_id, reason, details);
+    if (response.ok) {
+      alert('User reported successfully.');
+    } else {
+      alert('Failed to report user. Please try again.');
+    }
+  };
+
   const activeMatch = matches.find((m) => m.match_id === matchId);
 
   return (
@@ -175,19 +218,35 @@ export default function MessagesPage() {
             {matchId && (
               <div className="thread-layout">
                 {/* Thread header */}
-                <div className="thread-header">
+                <div className="thread-header d-flex justify-content-between align-items-center">
                   {activeMatch && (
-                    <div className="d-flex align-items-center gap-2">
-                      <div
-                        className="profile-avatar-sm"
-                        style={{ backgroundColor: getAccentColor(activeMatch.user_id) }}
-                      >
-                        {getInitials(activeMatch.display_name)}
+                    <>
+                      <div className="d-flex align-items-center gap-2">
+                        <div
+                          className="profile-avatar-sm"
+                          style={{ backgroundColor: getAccentColor(activeMatch.user_id) }}
+                        >
+                          {getInitials(activeMatch.display_name)}
+                        </div>
+                        <span className="fw-semibold">
+                          {activeMatch.display_name}
+                        </span>
                       </div>
-                      <span className="fw-semibold">
-                        {activeMatch.display_name}
-                      </span>
-                    </div>
+                      
+                      <Dropdown align="end">
+                        <Dropdown.Toggle variant="link" className="text-muted p-0 border-0 text-decoration-none fs-5">
+                          ⋮
+                        </Dropdown.Toggle>
+                        <Dropdown.Menu>
+                          <Dropdown.Item onClick={handleReport} className="text-warning">
+                            Report
+                          </Dropdown.Item>
+                          <Dropdown.Item onClick={handleBlock} className="text-danger">
+                            Block
+                          </Dropdown.Item>
+                        </Dropdown.Menu>
+                      </Dropdown>
+                    </>
                   )}
                 </div>
 
