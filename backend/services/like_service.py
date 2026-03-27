@@ -1,6 +1,6 @@
 import psycopg2
 import uuid
-from db import get_db
+from db import get_db, put_db_connection
 
 
 def is_valid_uuid(value):
@@ -62,7 +62,7 @@ def record_like(current_user_id, target_user_id):
         raise
     finally:
         cur.close()
-        conn.close()
+        put_db_connection(conn)
 
 
 def record_pass(current_user_id, target_user_id):
@@ -98,4 +98,4 @@ def record_pass(current_user_id, target_user_id):
         raise
     finally:
         cur.close()
-        conn.close()
+        put_db_connection(conn)

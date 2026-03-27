@@ -1,4 +1,4 @@
-from db import get_db, get_db_cursor
+from db import get_db, get_db_cursor, put_db_connection
 
 
 def validate_match_access(cur, match_id, user_id):
@@ -62,7 +62,7 @@ def get_match_messages(match_id, user_id):
         raise e
     finally:
         cur.close()
-        conn.close()
+        put_db_connection(conn)
 
 
 def send_match_message(match_id, user_id, body):
@@ -110,4 +110,4 @@ def send_match_message(match_id, user_id, body):
         raise e
     finally:
         cur.close()
-        conn.close()
+        put_db_connection(conn)
