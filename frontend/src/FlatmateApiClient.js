@@ -486,6 +486,28 @@ export default class FlatmateApiClient {
     return this.put('/profiles/me', profileData);
   }
 
+  /**
+   * Blocks a user, hiding them from discovery and matches.
+   *
+   * @param {string} userId - The user_id of the profile to block.
+   * @returns {Promise<{ok: boolean, status: number, body: Object|null}>}
+   */
+  async blockUser(userId) {
+    return this.post(`/profiles/${userId}/block`);
+  }
+
+  /**
+   * Reports a user for a specific reason.
+   *
+   * @param {string} userId - The user_id of the profile to report.
+   * @param {string} reason - The enum reason for reporting.
+   * @param {string} [details] - Optional text details.
+   * @returns {Promise<{ok: boolean, status: number, body: Object|null}>}
+   */
+  async reportUser(userId, reason, details = '') {
+    return this.post(`/profiles/${userId}/report`, { reason, details });
+  }
+
   // Private dummy handlers
 
   /**
