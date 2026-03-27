@@ -17,25 +17,11 @@ import {
   Col,
   Form,
   Button,
+  Alert,
 } from 'react-bootstrap';
 import { useApi } from '../contexts/ApiProvider';
 import { useUser } from '../contexts/UserProvider';
-
-const ACCENT_COLORS = ['#6366f1', '#10b981', '#ec4899', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6'];
-
-function getInitials(displayName) {
-  return (displayName || '')
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
-
-function getAccentColor(userId) {
-  const hash = (userId || '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  return ACCENT_COLORS[hash % ACCENT_COLORS.length];
-}
+import { getInitials, getAccentColor } from '../utils/avatarHelpers';
 
 /**
  * Formats an ISO timestamp to a short time string (HH:MM).
@@ -71,6 +57,7 @@ export default function MessagesPage() {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState('');
 
   // Ref to the bottom of the message list for auto-scroll.
   const threadEndRef = useRef(null);
@@ -116,6 +103,7 @@ export default function MessagesPage() {
       if (!newMessage.trim() || !matchId) return;
 
       setSending(true);
+      setSendError('');
       const response = await api.sendMessage(matchId, newMessage.trim());
       if (response.ok) {
         setMessages((prev) => {
@@ -124,6 +112,8 @@ export default function MessagesPage() {
           return [...prev, msg];
         });
         setNewMessage('');
+      } else {
+        setSendError('Failed to send message. Please try again.');
       }
       setSending(false);
     },
@@ -136,7 +126,7 @@ export default function MessagesPage() {
     <div className="messages-page">
       <Container fluid="lg">
         <Row className="messages-layout g-0">
-          {/* ── Left sidebar: match list ───────────────────────── */}
+          {/* Left sidebar: match list */}
           <Col md={4} lg={3} className="messages-sidebar">
             <div className="sidebar-header">
               <h5 className="sidebar-title">Messages</h5>
@@ -171,7 +161,7 @@ export default function MessagesPage() {
             </div>
           </Col>
 
-          {/* ── Right panel: message thread ────────────────────── */}
+          {/* Right panel: message thread */}
           <Col md={8} lg={9} className="messages-thread-panel">
             {!matchId && (
               <div className="thread-empty-state">
@@ -222,6 +212,18 @@ export default function MessagesPage() {
                   {/* Scroll anchor */}
                   <div ref={threadEndRef} />
                 </div>
+
+                {/* Send error */}
+                {sendError && (
+                  <Alert
+                    variant="danger"
+                    dismissible
+                    onClose={() => setSendError('')}
+                    className="mx-3 mb-0"
+                  >
+                    {sendError}
+                  </Alert>
+                )}
 
                 {/* Input */}
                 <div className="thread-input-area">

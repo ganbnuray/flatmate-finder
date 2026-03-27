@@ -16,7 +16,7 @@ import { Container, Row, Col, Button } from 'react-bootstrap';
 export default function LandingPage() {
   return (
     <div className="landing-page">
-      {/* ── Hero ───────────────────────────────────────────────────── */}
+      {/* Hero */}
       <section className="landing-hero">
         <Container>
           <Row className="justify-content-center text-center">
@@ -55,7 +55,7 @@ export default function LandingPage() {
         </Container>
       </section>
 
-      {/* ── Features ────────────────────────────────────────────────── */}
+      {/* Features */}
       <section className="landing-features">
         <Container>
           <Row className="justify-content-center mb-5">
@@ -100,7 +100,7 @@ export default function LandingPage() {
         </Container>
       </section>
 
-      {/* ── CTA Banner ──────────────────────────────────────────────── */}
+      {/* CTA Banner */}
       <section className="landing-cta-banner">
         <Container>
           <Row className="justify-content-center text-center">
@@ -124,7 +124,7 @@ export default function LandingPage() {
         </Container>
       </section>
 
-      {/* ── Footer ──────────────────────────────────────────────────── */}
+      {/* Footer */}
       <footer className="landing-footer">
         <Container>
           <p className="text-muted-custom small text-center mb-0">

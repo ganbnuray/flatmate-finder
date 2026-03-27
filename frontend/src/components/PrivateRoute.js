@@ -7,7 +7,7 @@
  *   user is Object     → confirmed authenticated, render children
  */
 
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useUser } from '../contexts/UserProvider';
 
 /**
@@ -15,6 +15,8 @@ import { useUser } from '../contexts/UserProvider';
  *
  * Renders null during the loading phase (user === undefined) to prevent
  * a flash of the protected page before the auth check completes.
+ * Authenticated users with incomplete profiles are redirected to /onboarding
+ * (unless they are already on that page).
  *
  * @param {Object} props
  * @param {React.ReactNode} props.children - The protected page to render.
@@ -22,12 +24,18 @@ import { useUser } from '../contexts/UserProvider';
  */
 export default function PrivateRoute({ children }) {
   const { user } = useUser();
+  const location = useLocation();
 
   // Still resolving auth — show nothing to prevent flash of protected content.
   if (user === undefined) return null;
 
   // Confirmed unauthenticated — redirect to login.
   if (!user) return <Navigate to="/login" replace />;
+
+  // Profile incomplete — redirect to onboarding (skip if already there).
+  if (user.is_complete === false && location.pathname !== '/onboarding') {
+    return <Navigate to="/onboarding" replace />;
+  }
 
   return children;
 }

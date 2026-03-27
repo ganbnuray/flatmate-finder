@@ -27,7 +27,7 @@
  * so the backend swap is seamless.
  */
 
-// ─── Schema enum values ────────────────────────────────────────────────────
+// Schema enum values
 // cleanliness_level: 'very_clean' | 'clean' | 'moderate' | 'relaxed'
 // smoking_pref:      'non_smoker' | 'outside_only' | 'smoker' | 'no_preference'
 // pets_pref:         'no_pets' | 'has_pets' | 'ok_with_pets' | 'no_preference'
@@ -36,7 +36,7 @@
 // guests_pref:       'rarely' | 'sometimes' | 'often' | 'no_preference'
 // noise_level:       'quiet' | 'moderate' | 'lively'
 
-// ─── Module-level dummy data ───────────────────────────────────────────────
+// Module-level dummy data
 
 const CURRENT_USER = {
   user_id: 'u-001',
@@ -276,7 +276,7 @@ const DUMMY_MESSAGES = {
   ],
 };
 
-// ─── FlatmateApiClient ─────────────────────────────────────────────────────
+// FlatmateApiClient
 
 export default class FlatmateApiClient {
   // Private mutable dummy state — mutated by like/sendMessage/updateProfile.
@@ -285,7 +285,7 @@ export default class FlatmateApiClient {
   #messagesByMatch = structuredClone(DUMMY_MESSAGES);
   #currentUserProfile = { ...CURRENT_USER };
 
-  // ─── Core routing method ──────────────────────────────────────────────────
+  // Core routing method
 
   /**
    * Routes a request to the appropriate dummy handler by HTTP method and URL.
@@ -318,7 +318,7 @@ export default class FlatmateApiClient {
     return { ok: response.ok, status: response.status, body };
   }
 
-  // ─── Base HTTP verb methods ───────────────────────────────────────────────
+  // Base HTTP verb methods
 
   /**
    * Makes a GET request.
@@ -363,7 +363,7 @@ export default class FlatmateApiClient {
     return this.request({ method: 'DELETE', url });
   }
 
-  // ─── Domain methods ───────────────────────────────────────────────────────
+  // Domain methods
 
   /**
    * Logs in a user with email and password.
@@ -486,7 +486,7 @@ export default class FlatmateApiClient {
     return this.put('/profiles/me', profileData);
   }
 
-  // ─── Private dummy handlers ───────────────────────────────────────────────
+  // Private dummy handlers
 
   /**
    * Handles dummy user registration.

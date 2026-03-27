@@ -7,6 +7,7 @@
  */
 
 import { Card, Button, Badge } from 'react-bootstrap';
+import { getInitials, getAccentColor } from '../utils/avatarHelpers';
 
 /**
  * Maps cleanliness enum values to human-readable labels.
@@ -117,9 +118,9 @@ export default function ProfileCard({ profile, onLike, onPass }) {
         <div className="d-flex align-items-center gap-3 mb-4">
           <div
             className="profile-avatar-lg"
-            style={{ backgroundColor: profile.accent_color }}
+            style={{ backgroundColor: getAccentColor(profile.user_id) }}
           >
-            {profile.initials}
+            {getInitials(profile.display_name)}
           </div>
           <div>
             <h4 className="mb-0 fw-semibold">
@@ -135,7 +136,7 @@ export default function ProfileCard({ profile, onLike, onPass }) {
         <div className="mb-3">
           <span className="profile-stat-label">Budget</span>
           <span className="profile-stat-value">
-            £{profile.budget_min.toLocaleString()} – £{profile.budget_max.toLocaleString()}
+            £{(profile.budget_min ?? 0).toLocaleString()} – £{(profile.budget_max ?? 0).toLocaleString()}
             /mo
           </span>
         </div>
