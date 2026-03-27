@@ -1,12 +1,17 @@
-from flask import Flask, jsonify, request, session
-from flask.json.provider import DefaultJSONProvider
 import os
 import uuid
-from datetime import datetime, date
-import bcrypt
 import psycopg2
+from datetime import datetime, date
+from flask import Flask, jsonify, make_response, request, session
+from flask.json.provider import DefaultJSONProvider
 from dotenv import load_dotenv
-from db import get_db_connection, get_db_cursor
+
+from services import like_service
+from services import auth_service
+from services import profile_service
+from services import match_service
+from services import message_service
+from services import abuse_service
 
 load_dotenv(override=True)
 
@@ -20,601 +25,258 @@ class JSONProvider(DefaultJSONProvider):
         return super().default(obj)
 
 
-app = Flask(__name__)
-app.json_provider_class = JSONProvider
-app.json = JSONProvider(app)
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev_secret_key")
+def create_app():
+    app = Flask(__name__)
+    app.json_provider_class = JSONProvider
+    app.json = JSONProvider(app)
+    app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev_secret_key")
 
-ALLOWED_ORIGIN = "http://localhost:3000"
+    ALLOWED_ORIGIN = "http://localhost:3000"
 
-
-@app.after_request
-def add_cors_headers(response):
-    response.headers["Access-Control-Allow-Origin"] = ALLOWED_ORIGIN
-    response.headers["Access-Control-Allow-Credentials"] = "true"
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
-    return response
-
-
-@app.before_request
-def handle_preflight():
-    if request.method == "OPTIONS":
-        return jsonify({}), 200
-
-
-@app.route("/auth/register", methods=["POST"])
-def register():
-    data = request.get_json()
-    if not data or not data.get("email") or not data.get("password"):
-        return jsonify({"error": "email and password are required"}), 400
-
-    email = data["email"].lower()
-    password = data["password"]
-
-    password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode(
-        "utf-8"
-    )
-
-    conn = get_db_connection()
-    cur = get_db_cursor(conn)
-
-    try:
-        cur.execute("SELECT id FROM users WHERE email = %s", (email,))
-        if cur.fetchone():
-            return jsonify({"error": "email already registered"}), 409
-
-        cur.execute(
-            "INSERT INTO users (email, password_hash) VALUES (%s, %s) RETURNING id",
-            (email, password_hash),
+    @app.after_request
+    def add_cors_headers(response):
+        response.headers["Access-Control-Allow-Origin"] = ALLOWED_ORIGIN
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = (
+            "GET, POST, PUT, DELETE, OPTIONS"
         )
-        user_id = str(cur.fetchone()["id"])
-        conn.commit()
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        return response
 
-        session["user_id"] = user_id
+    @app.before_request
+    def handle_preflight():
+        if request.method == "OPTIONS":
+            return jsonify({}), 200
 
-        return (
-            jsonify(
-                {
-                    "user_id": user_id,
-                    "email": email,
-                    "message": "User registered successfully",
-                }
-            ),
-            201,
-        )
+    @app.route("/auth/register", methods=["POST"])
+    def register():
+        """Registers a new user and logs them in via session.
 
-    except Exception as e:
-        conn.rollback()
-        return jsonify({"error": "failed to register user", "details": str(e)}), 500
-    finally:
-        cur.close()
-        conn.close()
+        Returns:
+            JSON response with user_id, email, and message.
 
-
-@app.route("/auth/login", methods=["POST"])
-def login():
-    data = request.get_json()
-    if not data or not data.get("email") or not data.get("password"):
-        return jsonify({"error": "email and password are required"}), 400
-
-    email = data["email"].lower()
-    password = data["password"]
-
-    conn = get_db_connection()
-    cur = get_db_cursor(conn)
-
-    try:
-        cur.execute(
-            "SELECT id, email, password_hash, is_active FROM users WHERE email = %s",
-            (email,),
-        )
-        user = cur.fetchone()
-
-        if not user:
-            return jsonify({"error": "invalid email or password"}), 401
-
-        if not user["is_active"]:
-            return jsonify({"error": "account is deactivated"}), 403
-
-        if not bcrypt.checkpw(
-            password.encode("utf-8"), user["password_hash"].encode("utf-8")
-        ):
-            return jsonify({"error": "invalid email or password"}), 401
-
-        session["user_id"] = str(user["id"])
-
-        return (
-            jsonify(
-                {
-                    "user_id": str(user["id"]),
-                    "email": user["email"],
-                    "message": "logged in successfully",
-                }
-            ),
-            200,
-        )
-
-    except Exception as e:
-        return jsonify({"error": "login failed", "details": str(e)}), 500
-    finally:
-        cur.close()
-        conn.close()
-
-
-@app.route("/auth/logout", methods=["DELETE"])
-def logout():
-    session.pop("user_id", None)
-    return "", 204
-
-
-@app.route("/profiles/me", methods=["GET"])
-def get_my_profile():
-    if "user_id" not in session:
-        return jsonify({"error": "unauthorized"}), 401
-
-    conn = get_db_connection()
-    cur = get_db_cursor(conn)
-    try:
-        cur.execute("SELECT * FROM profiles WHERE user_id = %s", (session["user_id"],))
-        profile = cur.fetchone()
-
-        if not profile:
-            return jsonify({"error": "profile not found"}), 404
-
-        return jsonify(dict(profile)), 200
-    except Exception as e:
-        return jsonify({"error": "failed to fetch profile", "details": str(e)}), 500
-    finally:
-        cur.close()
-        conn.close()
-
-
-@app.route("/profiles/me", methods=["POST", "PUT"])
-def upsert_profile():
-    if "user_id" not in session:
-        return jsonify({"error": "unauthorized"}), 401
-
-    data = request.get_json()
-    if not data:
-        return jsonify({"error": "request body is missing"}), 400
-
-    required_fields = [
-        "display_name",
-        "age",
-        "city",
-        "housing_status",
-        "budget_min",
-        "budget_max",
-        "cleanliness",
-        "smoking",
-        "pets",
-        "sleep_schedule",
-    ]
-    for field in required_fields:
-        if field not in data:
-            return jsonify({"error": f"missing required field: {field}"}), 400
-
-    # Assuming the frontend sends valid values according to the enums,
-    # and we perform minimum validation here. More thorough validation can be done.
-    if data.get("budget_min", 0) > data.get("budget_max", 0):
-        return jsonify({"error": "budget_min cannot be greater than budget_max"}), 400
-
-    conn = get_db_connection()
-    cur = get_db_cursor(conn)
-    try:
-        # Check if profile exists
-        cur.execute("SELECT id FROM profiles WHERE user_id = %s", (session["user_id"],))
-        exists = cur.fetchone()
-
-        is_complete = True  # Since all required fields are checked above, we assume true. Bio, guests, noise_level can be optional depending on strictness.
-
-        if exists:
-            # Update existing profile
-            cur.execute(
-                """
-                UPDATE profiles 
-                SET display_name = %s, age = %s, city = %s, housing_status = %s, budget_min = %s, budget_max = %s, 
-                    bio = %s, cleanliness = %s, smoking = %s, pets = %s, sleep_schedule = %s, guests = %s, noise_level = %s,
-                    is_complete = %s
-                WHERE user_id = %s
-                RETURNING *
-            """,
-                (
-                    data["display_name"],
-                    data["age"],
-                    data["city"],
-                    data["housing_status"],
-                    data["budget_min"],
-                    data["budget_max"],
-                    data.get("bio", ""),
-                    data["cleanliness"],
-                    data["smoking"],
-                    data["pets"],
-                    data["sleep_schedule"],
-                    data.get("guests", "no_preference"),
-                    data.get("noise_level", "moderate"),
-                    is_complete,
-                    session["user_id"],
-                ),
-            )
-        else:
-            # Create new profile
-            cur.execute(
-                """
-                INSERT INTO profiles (user_id, display_name, age, city, housing_status, budget_min, budget_max, 
-                                    bio, cleanliness, smoking, pets, sleep_schedule, guests, noise_level, is_complete)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                RETURNING *
-            """,
-                (
-                    session["user_id"],
-                    data["display_name"],
-                    data["age"],
-                    data["city"],
-                    data["housing_status"],
-                    data["budget_min"],
-                    data["budget_max"],
-                    data.get("bio", ""),
-                    data["cleanliness"],
-                    data["smoking"],
-                    data["pets"],
-                    data["sleep_schedule"],
-                    data.get("guests", "no_preference"),
-                    data.get("noise_level", "moderate"),
-                    is_complete,
-                ),
-            )
-
-        profile = cur.fetchone()
-        conn.commit()
-        return jsonify(dict(profile)), 200 if exists else 201
-
-    except Exception as e:
-        conn.rollback()
-        return jsonify({"error": "failed to save profile", "details": str(e)}), 500
-    finally:
-        cur.close()
-        conn.close()
-
-
-@app.route("/profiles", methods=["GET"])
-def discover_profiles():
-    if "user_id" not in session:
-        return jsonify({"error": "unauthorized"}), 401
-
-    current_user_id = session["user_id"]
-    conn = get_db_connection()
-    cur = get_db_cursor(conn)
-
-    try:
-        # Check if the user has completed their profile
-        cur.execute(
-            "SELECT is_complete FROM profiles WHERE user_id = %s", (current_user_id,)
-        )
-        user_profile = cur.fetchone()
-
-        if not user_profile or not user_profile["is_complete"]:
-            return jsonify({"error": "complete your profile to view others"}), 403
-
-        # Query to fetch all profiles excluding self, blocked users, and acted-upon users
-        query = """
-            SELECT * FROM profiles 
-            WHERE is_complete = TRUE 
-            AND user_id != %s
-            AND user_id NOT IN (
-                SELECT liked_id FROM likes WHERE liker_id = %s
-            )
-            AND user_id NOT IN (
-                SELECT blocked_id FROM blocks WHERE blocker_id = %s
-                UNION
-                SELECT blocker_id FROM blocks WHERE blocked_id = %s
-            )
-            ORDER BY updated_at DESC
+        Raises:
+            400: If missing email or password.
+            409: If email is already registered.
+            500: Server or database error.
         """
-        cur.execute(
-            query, (current_user_id, current_user_id, current_user_id, current_user_id)
-        )
-        profiles = cur.fetchall()
-
-        return jsonify([dict(p) for p in profiles]), 200
-
-    except Exception as e:
-        return (
-            jsonify({"error": "failed to load discovery feed", "details": str(e)}),
-            500,
-        )
-    finally:
-        cur.close()
-        conn.close()
-
-
-@app.route("/profiles/<target_user_id>/like", methods=["POST"])
-def like_profile(target_user_id):
-    if "user_id" not in session:
-        return jsonify({"error": "unauthorized"}), 401
-
-    current_user_id = session["user_id"]
-
-    conn = get_db_connection()
-    cur = get_db_cursor(conn)
-
-    try:
-        cur.execute(
-            "INSERT INTO likes (liker_id, liked_id, action) VALUES (%s, %s, %s)",
-            (current_user_id, target_user_id, "LIKE"),
-        )
-    except Exception:
-        conn.rollback()
-        return jsonify({"error": "already acted on this user"}), 409
-
-    # check for mutual like
-    cur.execute(
-        "SELECT id FROM likes WHERE liker_id = %s AND liked_id = %s AND action = 'LIKE'",
-        (target_user_id, current_user_id),
-    )
-    mutual = cur.fetchone()
-    match_created = False
-
-    if mutual:
-        user_a = min(current_user_id, target_user_id)
-        user_b = max(current_user_id, target_user_id)
-        cur.execute(
-            "INSERT INTO matches (user_a_id, user_b_id) VALUES (%s, %s)",
-            (user_a, user_b),
-        )
-        match_created = True
-
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    return jsonify({"matched": match_created}), 201
-
-
-@app.route("/profiles/<target_user_id>/pass", methods=["POST"])
-def pass_profile(target_user_id):
-    if "user_id" not in session:
-        return jsonify({"error": "unauthorized"}), 401
-
-    current_user_id = session["user_id"]
-
-    conn = get_db_connection()
-    cur = get_db_cursor(conn)
-
-    try:
-        cur.execute(
-            "INSERT INTO likes (liker_id, liked_id, action) VALUES (%s, %s, %s)",
-            (current_user_id, target_user_id, "PASS"),
-        )
-    except Exception:
-        conn.rollback()
-        return jsonify({"error": "already acted on this user"}), 409
-
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    return jsonify({"passed": True}), 201
-
-
-@app.route("/matches", methods=["GET"])
-def get_matches():
-    if "user_id" not in session:
-        return jsonify({"error": "unauthorized"}), 401
-
-    current_user_id = session["user_id"]
-    conn = get_db_connection()
-    cur = get_db_cursor(conn)
-
-    try:
-        # Fetch active matches for current user and resolve the partner's profile
-        query = """
-            SELECT m.id AS match_id, m.created_at AS match_created_at, p.*,
-                (SELECT body FROM messages WHERE match_id = m.id ORDER BY created_at DESC LIMIT 1) AS last_message
-            FROM matches m
-            JOIN profiles p ON (
-                (m.user_a_id = p.user_id AND m.user_b_id = %s)
-                OR
-                (m.user_b_id = p.user_id AND m.user_a_id = %s)
+        data = request.get_json()
+        if not data or not data.get("email") or not data.get("password"):
+            return make_response(
+                jsonify({"error": "email and password are required"}), 400
             )
-            WHERE (m.user_a_id = %s OR m.user_b_id = %s)
-            AND m.status = 'active'
-            ORDER BY m.created_at DESC
+
+        try:
+            result = auth_service.register_user(data["email"].lower(), data["password"])
+            session["user_id"] = str(result["user_id"])
+            return make_response(
+                jsonify({**result, "message": "User registered successfully"}), 201
+            )
+        except ValueError as e:
+            return make_response(jsonify({"error": str(e)}), 409)
+        except Exception as e:
+            return make_response(
+                jsonify({"error": "failed to register user", "details": str(e)}), 500
+            )
+
+    @app.route("/auth/login", methods=["POST"])
+    def login():
+        """Logs in an existing user and creates a session.
+
+        Returns:
+            JSON response with user_id, email, and message.
+
+        Raises:
+            400: If missing email or password.
+            401: If invalid credentials.
+            403: If account is deactivated.
+            500: Server error.
         """
-        cur.execute(
-            query, (current_user_id, current_user_id, current_user_id, current_user_id)
-        )
-        matches = cur.fetchall()
+        data = request.get_json()
+        if not data or not data.get("email") or not data.get("password"):
+            return make_response(
+                jsonify({"error": "email and password are required"}), 400
+            )
 
-        return jsonify({"matches": [dict(m) for m in matches]}), 200
+        try:
+            result = auth_service.login_user(data["email"].lower(), data["password"])
+            session["user_id"] = str(result["user_id"])
+            return make_response(
+                jsonify({**result, "message": "logged in successfully"}), 200
+            )
+        except ValueError as e:
+            status_code = 403 if "deactivated" in str(e) else 401
+            return make_response(jsonify({"error": str(e)}), status_code)
+        except Exception as e:
+            return make_response(
+                jsonify({"error": "login failed", "details": str(e)}), 500
+            )
 
-    except Exception as e:
-        return jsonify({"error": "failed to load matches", "details": str(e)}), 500
-    finally:
-        cur.close()
-        conn.close()
+    @app.route("/auth/logout", methods=["DELETE"])
+    def logout():
+        """Logs out the user by clearing the session.
 
+        Returns:
+            Empty 204 No Content response.
+        """
+        session.pop("user_id", None)
+        return make_response("", 204)
 
-@app.route("/matches/<match_id>/messages", methods=["GET"])
-def get_messages(match_id):
-    if "user_id" not in session:
-        return jsonify({"error": "unauthorized"}), 401
+    @app.route("/profiles/me", methods=["GET"])
+    def get_my_profile():
+        """Retrieves the authenticated user's profile.
 
-    current_user_id = session["user_id"]
-    conn = get_db_connection()
-    cur = get_db_cursor(conn)
+        Returns:
+            JSON representation of the user's profile data.
 
-    try:
-        # Validate that the match exists, is active, and the current user is part of it
-        cur.execute(
-            """
-            SELECT id FROM matches 
-            WHERE id = %s AND status = 'active'
-            AND (user_a_id = %s OR user_b_id = %s)
-        """,
-            (match_id, current_user_id, current_user_id),
-        )
+        Raises:
+            401: If unauthorized (missing session).
+            404: If profile does not exist.
+            500: Database error.
+        """
+        if "user_id" not in session:
+            return make_response(jsonify({"error": "unauthorized"}), 401)
 
-        match = cur.fetchone()
-        if not match:
-            return jsonify({"error": "match not found or unauthorized"}), 404
+        try:
+            profile = profile_service.get_profile(session["user_id"])
+            return make_response(jsonify(profile), 200)
+        except ValueError as e:
+            return make_response(jsonify({"error": str(e)}), 404)
+        except Exception as e:
+            return make_response(
+                jsonify({"error": "failed to fetch profile", "details": str(e)}), 500
+            )
 
-        # Fetch messages for this match
-        cur.execute(
-            """
-            SELECT id, sender_id, body, created_at 
-            FROM messages 
-            WHERE match_id = %s 
-            ORDER BY created_at ASC
-        """,
-            (match_id,),
-        )
+    @app.route("/profiles/me", methods=["POST", "PUT"])
+    def upsert_profile():
+        """Creates or updates the authenticated user's profile.
 
-        messages = cur.fetchall()
-        return jsonify([dict(m) for m in messages]), 200
+        Returns:
+            JSON representation of the newly created or updated profile.
 
-    except Exception as e:
-        return jsonify({"error": "failed to load messages", "details": str(e)}), 500
-    finally:
-        cur.close()
-        conn.close()
+        Raises:
+            401: If unauthorized.
+            400: Missing required fields or invalid constraints.
+            500: Failed to save profile to database.
+        """
+        if "user_id" not in session:
+            return make_response(jsonify({"error": "unauthorized"}), 401)
 
+        data = request.get_json()
+        if not data:
+            return make_response(jsonify({"error": "request body is missing"}), 400)
 
-@app.route("/matches/<match_id>/messages", methods=["POST"])
-def send_message(match_id):
-    if "user_id" not in session:
-        return jsonify({"error": "unauthorized"}), 401
+        required_fields = [
+            "display_name",
+            "age",
+            "city",
+            "housing_status",
+            "budget_min",
+            "budget_max",
+            "cleanliness",
+            "smoking",
+            "pets",
+            "sleep_schedule",
+        ]
+        for field in required_fields:
+            if field not in data:
+                return make_response(
+                    jsonify({"error": f"missing required field: {field}"}), 400
+                )
 
-    data = request.get_json()
-    if not data or not data.get("body") or len(data.get("body").strip()) == 0:
-        return jsonify({"error": "message body is required"}), 400
+        try:
+            profile, is_new = profile_service.upsert_profile(session["user_id"], data)
+            status_code = 201 if is_new else 200
+            return make_response(jsonify(profile), status_code)
+        except ValueError as e:
+            return make_response(jsonify({"error": str(e)}), 400)
+        except Exception as e:
+            return make_response(
+                jsonify({"error": "failed to save profile", "details": str(e)}), 500
+            )
 
-    body = data.get("body").strip()
-    if len(body) > 2000:
-        return jsonify({"error": "message body is too long"}), 400
+    @app.route("/profiles", methods=["GET"])
+    def discover_profiles():
+        """Retrieves a feed of candidate profiles excluding self, blocked, or acted-upon users.
 
-    current_user_id = session["user_id"]
-    conn = get_db_connection()
-    cur = get_db_cursor(conn)
+        Returns:
+            JSON list of candidate profile dicts.
 
-    try:
-        # Validate that the match exists, is active, and the current user is part of it
-        cur.execute(
-            """
-            SELECT id FROM matches 
-            WHERE id = %s AND status = 'active'
-            AND (user_a_id = %s OR user_b_id = %s)
-        """,
-            (match_id, current_user_id, current_user_id),
-        )
+        Raises:
+            401: If unauthorized.
+            403: If the current user's profile is incomplete.
+            500: Database error loading the feed.
+        """
+        if "user_id" not in session:
+            return make_response(jsonify({"error": "unauthorized"}), 401)
 
-        match = cur.fetchone()
-        if not match:
-            return jsonify({"error": "match not found or unauthorized"}), 404
+        try:
+            profiles = profile_service.get_discovery_feed(session["user_id"])
+            return make_response(jsonify(profiles), 200)
+        except ValueError as e:
+            return make_response(jsonify({"error": str(e)}), 403)
+        except Exception as e:
+            return make_response(
+                jsonify({"error": "failed to load discovery feed", "details": str(e)}),
+                500,
+            )
 
-        # Insert new message
-        cur.execute(
-            """
-            INSERT INTO messages (match_id, sender_id, body) 
-            VALUES (%s, %s, %s)
-            RETURNING id, sender_id, body, created_at
-        """,
-            (match_id, current_user_id, body),
-        )
+    @app.route("/profiles/<target_user_id>/like", methods=["POST"])
+    def like_profile(target_user_id):
+        """Records a like action for a target profile.
 
-        message = cur.fetchone()
-        conn.commit()
-        return jsonify(dict(message)), 201
+        Args:
+            target_user_id: The UUID of the profile being liked.
 
-    except Exception as e:
-        conn.rollback()
-        return jsonify({"error": "failed to send message", "details": str(e)}), 500
-    finally:
-        cur.close()
-        conn.close()
+        Returns:
+            JSON with key 'matched' set to True if a match was created, False otherwise.
 
+        Raises:
+            400: If target_user_id is not a valid UUID.
+            401: If unauthorized.
+            409: If the current user has already acted on this profile.
+        """
+        if "user_id" not in session:
+            return make_response(jsonify({"error": "unauthorized"}), 401)
 
-@app.route("/profiles/<target_user_id>/block", methods=["POST"])
-def block_user(target_user_id):
-    if "user_id" not in session:
-        return jsonify({"error": "unauthorized"}), 401
+        try:
+            result = like_service.record_like(session["user_id"], target_user_id)
+            return make_response(jsonify(result), 201)
+        except ValueError:
+            return make_response(jsonify({"error": "invalid user id"}), 400)
+        except psycopg2.IntegrityError:
+            return make_response(jsonify({"error": "already acted on this user"}), 409)
 
-    current_user_id = session["user_id"]
-    if current_user_id == target_user_id:
-        return jsonify({"error": "cannot block yourself"}), 400
+    @app.route("/profiles/<target_user_id>/pass", methods=["POST"])
+    def pass_profile(target_user_id):
+        """Records a pass action for a target profile.
 
-    conn = get_db_connection()
-    cur = get_db_cursor(conn)
+        Args:
+            target_user_id: The UUID of the profile being passed.
 
-    try:
-        cur.execute(
-            "INSERT INTO blocks (blocker_id, blocked_id) VALUES (%s, %s)",
-            (current_user_id, target_user_id),
-        )
-        conn.commit()
-        return jsonify({"message": "user blocked successfully"}), 201
-    except psycopg2.errors.UniqueViolation:
-        conn.rollback()
-        return jsonify({"message": "user already blocked"}), 200
-    except Exception as e:
-        conn.rollback()
-        return jsonify({"error": "failed to block user", "details": str(e)}), 500
-    finally:
-        cur.close()
-        conn.close()
+        Returns:
+            JSON with key 'passed' set to True.
 
+        Raises:
+            400: If target_user_id is not a valid UUID.
+            401: If unauthorized.
+            409: If the current user has already acted on this profile.
+        """
+        if "user_id" not in session:
+            return make_response(jsonify({"error": "unauthorized"}), 401)
 
-@app.route("/profiles/<target_user_id>/report", methods=["POST"])
-def report_user(target_user_id):
-    if "user_id" not in session:
-        return jsonify({"error": "unauthorized"}), 401
+        try:
+            result = like_service.record_pass(session["user_id"], target_user_id)
+            return make_response(jsonify(result), 201)
+        except ValueError:
+            return make_response(jsonify({"error": "invalid user id"}), 400)
+        except psycopg2.IntegrityError:
+            return make_response(jsonify({"error": "already acted on this user"}), 409)
 
-    current_user_id = session["user_id"]
-    if current_user_id == target_user_id:
-        return jsonify({"error": "cannot report yourself"}), 400
-
-    data = request.get_json()
-    if not data or not data.get("reason"):
-        return jsonify({"error": "report reason is required"}), 400
-
-    valid_reasons = [
-        "spam",
-        "harassment",
-        "fake_profile",
-        "inappropriate_content",
-        "other",
-    ]
-    reason = data.get("reason")
-    if reason not in valid_reasons:
-        return (
-            jsonify(
-                {"error": f"invalid reason, must be one of: {', '.join(valid_reasons)}"}
-            ),
-            400,
-        )
-
-    details = data.get("details", "")
-    if len(details) > 1000:
-        return jsonify({"error": "details too long (max 1000 characters)"}), 400
-
-    conn = get_db_connection()
-    cur = get_db_cursor(conn)
-
-    try:
-        cur.execute(
-            "INSERT INTO reports (reporter_id, reported_id, reason, details) VALUES (%s, %s, %s, %s)",
-            (current_user_id, target_user_id, reason, details),
-        )
-        conn.commit()
-        return jsonify({"message": "user reported successfully"}), 201
-    except Exception as e:
-        conn.rollback()
-        return jsonify({"error": "failed to report user", "details": str(e)}), 500
-    finally:
-        cur.close()
-        conn.close()
+    # In upcoming commits, the matches and messages endpoints will be placed here.
+    return app
 
 
 if __name__ == "__main__":
+    app = create_app()
     app.run(debug=True, port=5050)
