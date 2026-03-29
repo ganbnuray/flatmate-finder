@@ -23,7 +23,6 @@ import {
 import { useApi } from '../contexts/ApiProvider';
 import { useUser } from '../contexts/UserProvider';
 import { getInitials, getAccentColor } from '../utils/avatarHelpers';
-import { useNavigate } from 'react-router-dom';
 
 /**
  * Formats an ISO timestamp to a short time string (HH:MM).
