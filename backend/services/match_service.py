@@ -16,7 +16,10 @@ def get_matches(user_id):
 
     try:
         query = """
-            SELECT m.id AS match_id, m.created_at AS match_created_at, p.*
+            SELECT m.id AS match_id,
+                   m.created_at AS match_created_at,
+                   (SELECT body FROM messages msg WHERE msg.match_id = m.id ORDER BY msg.created_at DESC LIMIT 1) AS last_message,
+                   p.*
             FROM matches m
             JOIN profiles p ON (
                 (m.user_a_id = p.user_id AND m.user_b_id = %s)

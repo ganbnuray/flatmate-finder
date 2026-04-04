@@ -273,7 +273,160 @@ def create_app():
         except psycopg2.IntegrityError:
             return make_response(jsonify({"error": "already acted on this user"}), 409)
 
-    # In upcoming commits, the matches and messages endpoints will be placed here.
+    @app.route("/matches", methods=["GET"])
+    def get_matches():
+        """Retrieves all active matches for the authenticated user.
+
+        Returns:
+            JSON object with key "matches" containing a list of match dicts,
+            each including the partner's profile data and the most recent message body.
+
+        Raises:
+            401: If unauthorized.
+            400: If the user_id is malformed.
+            500: Database error.
+        """
+        if "user_id" not in session:
+            return make_response(jsonify({"error": "unauthorized"}), 401)
+
+        try:
+            matches = match_service.get_matches(session["user_id"])
+            return make_response(jsonify({"matches": matches}), 200)
+        except ValueError as e:
+            return make_response(jsonify({"error": str(e)}), 400)
+        except Exception as e:
+            return make_response(
+                jsonify({"error": "failed to fetch matches", "details": str(e)}), 500
+            )
+
+    @app.route("/matches/<match_id>/messages", methods=["GET"])
+    def get_messages(match_id):
+        """Retrieves all messages for an active match in chronological order.
+
+        Args:
+            match_id: The UUID of the match.
+
+        Returns:
+            JSON array of message dicts (id, sender_id, body, created_at).
+
+        Raises:
+            401: If unauthorized.
+            404: If the match does not exist or the user is not a participant.
+            500: Database error.
+        """
+        if "user_id" not in session:
+            return make_response(jsonify({"error": "unauthorized"}), 401)
+
+        try:
+            messages = message_service.get_match_messages(match_id, session["user_id"])
+            return make_response(jsonify(messages), 200)
+        except ValueError as e:
+            return make_response(jsonify({"error": str(e)}), 404)
+        except Exception as e:
+            return make_response(
+                jsonify({"error": "failed to fetch messages", "details": str(e)}), 500
+            )
+
+    @app.route("/matches/<match_id>/messages", methods=["POST"])
+    def send_message(match_id):
+        """Sends a new message within an active match.
+
+        Args:
+            match_id: The UUID of the match.
+
+        Returns:
+            JSON dict of the newly created message (id, sender_id, body, created_at).
+
+        Raises:
+            401: If unauthorized.
+            400: If body is missing, empty, or exceeds 2000 characters,
+                 or if the user is not a participant in the match.
+            500: Database error.
+        """
+        if "user_id" not in session:
+            return make_response(jsonify({"error": "unauthorized"}), 401)
+
+        data = request.get_json()
+        if not data or not data.get("body"):
+            return make_response(jsonify({"error": "message body is required"}), 400)
+
+        try:
+            message = message_service.send_match_message(
+                match_id, session["user_id"], data["body"]
+            )
+            return make_response(jsonify(message), 201)
+        except ValueError as e:
+            return make_response(jsonify({"error": str(e)}), 400)
+        except Exception as e:
+            return make_response(
+                jsonify({"error": "failed to send message", "details": str(e)}), 500
+            )
+
+    @app.route("/profiles/<target_user_id>/block", methods=["POST"])
+    def block_user(target_user_id):
+        """Blocks a user, preventing future interactions and discovery appearances.
+
+        Args:
+            target_user_id: The UUID of the user to block.
+
+        Returns:
+            JSON dict with a success message.
+
+        Raises:
+            401: If unauthorized.
+            400: If attempting to block oneself.
+            500: Database error.
+        """
+        if "user_id" not in session:
+            return make_response(jsonify({"error": "unauthorized"}), 401)
+
+        try:
+            result = abuse_service.block_user(session["user_id"], target_user_id)
+            return make_response(jsonify(result), 200)
+        except ValueError as e:
+            return make_response(jsonify({"error": str(e)}), 400)
+        except Exception as e:
+            return make_response(
+                jsonify({"error": "failed to block user", "details": str(e)}), 500
+            )
+
+    @app.route("/profiles/<target_user_id>/report", methods=["POST"])
+    def report_user(target_user_id):
+        """Submits a moderation report against a user.
+
+        Args:
+            target_user_id: The UUID of the user being reported.
+
+        Returns:
+            JSON dict with a success message.
+
+        Raises:
+            401: If unauthorized.
+            400: If reason is missing, invalid, or attempting to report oneself.
+            500: Database error.
+        """
+        if "user_id" not in session:
+            return make_response(jsonify({"error": "unauthorized"}), 401)
+
+        data = request.get_json()
+        if not data or not data.get("reason"):
+            return make_response(jsonify({"error": "reason is required"}), 400)
+
+        try:
+            result = abuse_service.report_user(
+                session["user_id"],
+                target_user_id,
+                data["reason"],
+                data.get("details", ""),
+            )
+            return make_response(jsonify(result), 201)
+        except ValueError as e:
+            return make_response(jsonify({"error": str(e)}), 400)
+        except Exception as e:
+            return make_response(
+                jsonify({"error": "failed to report user", "details": str(e)}), 500
+            )
+
     return app
 
 
