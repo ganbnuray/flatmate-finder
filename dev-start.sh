@@ -33,11 +33,16 @@ cd ..
 
 echo "Installing backend dependencies..."
 cd backend
+if [ ! -f venv/bin/activate ]; then
+  python3 -m venv venv
+fi
+source venv/bin/activate
 pip install -r requirements.txt -q
 cd ..
 
 echo "Starting backend on http://localhost:5050 ..."
 cd backend
+source venv/bin/activate
 python app.py &
 BACKEND_PID=$!
 cd ..
