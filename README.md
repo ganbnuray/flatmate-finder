@@ -14,28 +14,37 @@ Flatmate Finder is a structured, profile-driven platform that helps users quickl
 |-------|-----------|
 | Frontend | React 18 (Create React App) |
 | Styling | Bootstrap 5 + custom CSS |
-| Backend | Flask (Python) — in progress |
-| Database | PostgreSQL — in progress |
+| Backend | Flask (Python) |
+| Database | PostgreSQL |
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 18+
-- npm
+- Python 3.10+
+- A PostgreSQL database (Supabase or local)
 
 ### Installation
 
 ```bash
 git clone https://github.com/ganbnuray/flatmate-finder.git
-cd flatmate-finder/frontend
-npm install
-npm start
+cd flatmate-finder
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Copy `.env.example` to `.env` and fill in your `DATABASE_URL`:
 
-The frontend runs with simulated data — no backend required to demo the full user journey (register → onboard → discover → match → message).
+```bash
+cp .env.example .env
+```
+
+### Running
+
+```bash
+./dev-start.sh
+```
+
+The script installs dependencies, then starts the backend and frontend. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Development Workflow
 
