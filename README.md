@@ -46,6 +46,16 @@ cp .env.example .env
 
 The script installs dependencies, then starts the backend and frontend. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+## Running Tests
+
+Tests require Docker to be running. They use [testcontainers](https://testcontainers-python.readthedocs.io/) to spin up a disposable PostgreSQL database, so they never touch the production database.
+
+```bash
+cd backend
+pip install -r requirements-dev.txt
+pytest
+```
+
 ## Development Workflow
 
 This project follows **GitHub Flow**. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before making any changes.
