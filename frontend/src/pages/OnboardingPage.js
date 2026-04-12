@@ -39,6 +39,8 @@ export default function OnboardingPage() {
     display_name: '',
     age: '',
     city: '',
+    neighborhood: '',
+    gender: 'prefer_not_say',
     housing_status: 'LOOKING',
     budget_min: '',
     budget_max: '',
@@ -75,12 +77,17 @@ export default function OnboardingPage() {
 
     const displayName = formData.display_name.trim();
     const city = formData.city.trim();
+    const neighborhood = formData.neighborhood.trim();
     if (!displayName) {
       setError('Display name cannot be blank.');
       return;
     }
     if (!city) {
       setError('City cannot be blank.');
+      return;
+    }
+    if (!neighborhood) {
+      setError('Neighborhood/area cannot be blank.');
       return;
     }
 
@@ -102,6 +109,7 @@ export default function OnboardingPage() {
       ...formData,
       display_name: displayName,
       city,
+      neighborhood,
       age,
       budget_min: budgetMin,
       budget_max: budgetMax,
@@ -165,7 +173,22 @@ export default function OnboardingPage() {
                         />
                       </Form.Group>
                     </Col>
-                    <Col md={9}>
+                    <Col md={3}>
+                      <Form.Group controlId="gender">
+                        <Form.Label>Gender</Form.Label>
+                        <Form.Select
+                          value={formData.gender}
+                          onChange={(e) => handleChange('gender', e.target.value)}
+                        >
+                          <option value="woman">Woman</option>
+                          <option value="man">Man</option>
+                          <option value="non_binary">Non-binary</option>
+                          <option value="other">Other</option>
+                          <option value="prefer_not_say">Prefer not to say</option>
+                        </Form.Select>
+                      </Form.Group>
+                    </Col>
+                    <Col md={6}>
                       <Form.Group controlId="city">
                         <Form.Label>City</Form.Label>
                         <Form.Control
@@ -173,6 +196,18 @@ export default function OnboardingPage() {
                           placeholder="e.g. London, Manchester"
                           value={formData.city}
                           onChange={(e) => handleChange('city', e.target.value)}
+                          required
+                        />
+                      </Form.Group>
+                    </Col>
+                    <Col md={6}>
+                      <Form.Group controlId="neighborhood">
+                        <Form.Label>Neighborhood / area</Form.Label>
+                        <Form.Control
+                          type="text"
+                          placeholder="e.g. Hackney, Deansgate"
+                          value={formData.neighborhood}
+                          onChange={(e) => handleChange('neighborhood', e.target.value)}
                           required
                         />
                       </Form.Group>
@@ -185,6 +220,7 @@ export default function OnboardingPage() {
                           onChange={(e) => handleChange('housing_status', e.target.value)}
                         >
                           <option value="LOOKING">I&apos;m looking for a place</option>
+                          <option value="LOOKING_WITH_FLATMATE">Looking for a place + flatmate together</option>
                           <option value="HAS_APARTMENT">I have a place and need a flatmate</option>
                           <option value="EITHER">Either works for me</option>
                         </Form.Select>
@@ -201,7 +237,7 @@ export default function OnboardingPage() {
                   <Row className="g-3">
                     <Col md={6}>
                       <Form.Group controlId="budgetMin">
-                        <Form.Label>Minimum (£/month)</Form.Label>
+                        <Form.Label>Minimum ($/month)</Form.Label>
                         <Form.Control
                           type="number"
                           placeholder="e.g. 800"
@@ -214,7 +250,7 @@ export default function OnboardingPage() {
                     </Col>
                     <Col md={6}>
                       <Form.Group controlId="budgetMax">
-                        <Form.Label>Maximum (£/month)</Form.Label>
+                        <Form.Label>Maximum ($/month)</Form.Label>
                         <Form.Control
                           type="number"
                           placeholder="e.g. 1400"

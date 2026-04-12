@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Container,
   Row,
@@ -17,6 +17,7 @@ import {
   Alert,
 } from 'react-bootstrap';
 import { useApi } from '../contexts/ApiProvider';
+import { useUser } from '../contexts/UserProvider';
 import { getInitials, getAccentColor } from '../utils/avatarHelpers';
 
 /**
@@ -55,10 +56,27 @@ function truncate(text, maxLength) {
 export default function MatchesPage() {
   const api = useApi();
   const navigate = useNavigate();
+  const { user } = useUser();
 
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
+  const LAST_READ_PREFIX = 'flatmate:last_read:';
+
+  const getLastReadAt = (matchId) => {
+    const stored = localStorage.getItem(`${LAST_READ_PREFIX}${matchId}`);
+    return stored ? new Date(stored).getTime() : 0;
+  };
+
+  const hasUnread = (match) => {
+    if (!match?.last_message_at || !match.last_message) return false;
+    if (match.last_message_sender_id && match.last_message_sender_id === user?.user_id) {
+      return false;
+    }
+    const lastReadAt = getLastReadAt(match.match_id);
+    const lastMessageAt = new Date(match.last_message_at).getTime();
+    return lastMessageAt > lastReadAt;
+  };
 
   // Fetch matches on mount.
   useEffect(() => {
@@ -114,15 +132,24 @@ export default function MatchesPage() {
                   <Card.Body className="d-flex flex-column">
                     {/* Avatar */}
                     <div className="d-flex align-items-center gap-3 mb-3">
-                      <div
-                        className="profile-avatar-md"
-                        style={{ backgroundColor: getAccentColor(match.user_id) }}
-                      >
-                        {getInitials(match.display_name)}
-                      </div>
+                      <Link to={`/profiles/${match.user_id}`} className="match-profile-link">
+                        <div
+                          className="profile-avatar-md"
+                          style={{ backgroundColor: getAccentColor(match.user_id) }}
+                        >
+                          {getInitials(match.display_name)}
+                        </div>
+                      </Link>
                       <div className="overflow-hidden">
-                        <div className="fw-semibold text-truncate" style={{ color: 'var(--text-primary)' }}>
-                          {match.display_name}
+                        <div className="d-flex align-items-center gap-2">
+                          <Link
+                            to={`/profiles/${match.user_id}`}
+                            className="match-profile-link fw-semibold text-truncate"
+                            style={{ color: 'var(--text-primary)' }}
+                          >
+                            {match.display_name}
+                          </Link>
+                          {hasUnread(match) && <span className="match-unread-dot" />}
                         </div>
                         <div className="text-muted-custom small">
                           Matched {formatRelativeTime(match.match_created_at)}

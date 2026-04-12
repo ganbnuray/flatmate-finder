@@ -48,7 +48,15 @@ const LABELS = {
   housing_status: {
     HAS_APARTMENT: 'Has a place',
     LOOKING: 'Looking for a place',
+    LOOKING_WITH_FLATMATE: 'Looking for a place + flatmate',
     EITHER: 'Either',
+  },
+  gender: {
+    woman: 'Woman',
+    man: 'Man',
+    non_binary: 'Non-binary',
+    other: 'Other',
+    prefer_not_say: 'Prefer not to say',
   },
   guests: {
     rarely: 'Rarely has guests',
@@ -101,6 +109,8 @@ export default function ProfilePage() {
       display_name: user.display_name || '',
       age: user.age?.toString() || '',
       city: user.city || '',
+      neighborhood: user.neighborhood || '',
+      gender: user.gender || 'prefer_not_say',
       housing_status: user.housing_status || 'LOOKING',
       budget_min: user.budget_min?.toString() || '',
       budget_max: user.budget_max?.toString() || '',
@@ -138,6 +148,7 @@ export default function ProfilePage() {
 
     const displayName = formData.display_name.trim();
     const city = formData.city.trim();
+    const neighborhood = formData.neighborhood.trim();
     if (!displayName) {
       setSaving(false);
       setError('Display name cannot be blank.');
@@ -146,6 +157,11 @@ export default function ProfilePage() {
     if (!city) {
       setSaving(false);
       setError('City cannot be blank.');
+      return;
+    }
+    if (!neighborhood) {
+      setSaving(false);
+      setError('Neighborhood/area cannot be blank.');
       return;
     }
 
@@ -178,6 +194,7 @@ export default function ProfilePage() {
       ...formData,
       display_name: displayName,
       city,
+      neighborhood,
       age,
       budget_min: budgetMin,
       budget_max: budgetMax,
@@ -244,24 +261,36 @@ export default function ProfilePage() {
                   <Card.Body>
                     <h6 className="profile-section-label">About</h6>
                     <Row className="g-2 mb-3">
-                      <Col xs={6} md={4}>
+                      <Col xs={6} md={3}>
                         <span className="profile-detail-label">Age</span>
                         <span className="profile-detail-value">{user.age}</span>
                       </Col>
-                      <Col xs={6} md={4}>
+                      <Col xs={6} md={3}>
+                        <span className="profile-detail-label">Gender</span>
+                        <span className="profile-detail-value">
+                          {label('gender', user.gender)}
+                        </span>
+                      </Col>
+                      <Col xs={6} md={3}>
                         <span className="profile-detail-label">City</span>
                         <span className="profile-detail-value">{user.city}</span>
                       </Col>
-                      <Col xs={12} md={4}>
+                      <Col xs={6} md={3}>
+                        <span className="profile-detail-label">Neighborhood</span>
+                        <span className="profile-detail-value">{user.neighborhood}</span>
+                      </Col>
+                      <Col xs={12} md={6}>
                         <span className="profile-detail-label">Situation</span>
                         <span className="profile-detail-value">
                           {label('housing_status', user.housing_status)}
                         </span>
                       </Col>
-                      <Col xs={6} md={6}>
+                      <Col xs={12} md={6}>
                         <span className="profile-detail-label">Budget</span>
                         <span className="profile-detail-value">
-                          £{user.budget_min?.toLocaleString()} – £{user.budget_max?.toLocaleString()}/mo
+                          {'$'}
+                          {user.budget_min?.toLocaleString()} – {'$'}
+                          {user.budget_max?.toLocaleString()}/mo
                         </span>
                       </Col>
                     </Row>
@@ -318,13 +347,39 @@ export default function ProfilePage() {
                           />
                         </Form.Group>
                       </Col>
-                      <Col md={9}>
+                      <Col md={3}>
+                        <Form.Group controlId="editGender">
+                          <Form.Label>Gender</Form.Label>
+                          <Form.Select
+                            value={formData.gender}
+                            onChange={(e) => handleChange('gender', e.target.value)}
+                          >
+                            <option value="woman">Woman</option>
+                            <option value="man">Man</option>
+                            <option value="non_binary">Non-binary</option>
+                            <option value="other">Other</option>
+                            <option value="prefer_not_say">Prefer not to say</option>
+                          </Form.Select>
+                        </Form.Group>
+                      </Col>
+                      <Col md={6}>
                         <Form.Group controlId="editCity">
                           <Form.Label>City</Form.Label>
                           <Form.Control
                             type="text"
                             value={formData.city}
                             onChange={(e) => handleChange('city', e.target.value)}
+                            required
+                          />
+                        </Form.Group>
+                      </Col>
+                      <Col md={6}>
+                        <Form.Group controlId="editNeighborhood">
+                          <Form.Label>Neighborhood / area</Form.Label>
+                          <Form.Control
+                            type="text"
+                            value={formData.neighborhood}
+                            onChange={(e) => handleChange('neighborhood', e.target.value)}
                             required
                           />
                         </Form.Group>
@@ -337,6 +392,7 @@ export default function ProfilePage() {
                             onChange={(e) => handleChange('housing_status', e.target.value)}
                           >
                             <option value="LOOKING">I&apos;m looking for a place</option>
+                            <option value="LOOKING_WITH_FLATMATE">Looking for a place + flatmate together</option>
                             <option value="HAS_APARTMENT">I have a place and need a flatmate</option>
                             <option value="EITHER">Either works for me</option>
                           </Form.Select>
@@ -352,7 +408,7 @@ export default function ProfilePage() {
                     <Row className="g-3">
                       <Col md={6}>
                         <Form.Group controlId="editBudgetMin">
-                          <Form.Label>Minimum (£/month)</Form.Label>
+                          <Form.Label>Minimum ($/month)</Form.Label>
                           <Form.Control
                             type="number"
                             min={0}
@@ -364,7 +420,7 @@ export default function ProfilePage() {
                       </Col>
                       <Col md={6}>
                         <Form.Group controlId="editBudgetMax">
-                          <Form.Label>Maximum (£/month)</Form.Label>
+                          <Form.Label>Maximum ($/month)</Form.Label>
                           <Form.Control
                             type="number"
                             min={0}

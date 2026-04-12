@@ -82,7 +82,26 @@ function housingLabel(value) {
   const labels = {
     HAS_APARTMENT: 'Has a place',
     LOOKING: 'Looking for a place',
+    LOOKING_WITH_FLATMATE: 'Looking for a place + flatmate',
     EITHER: 'Either',
+  };
+  return labels[value] || value;
+}
+
+/**
+ * Maps gender enum values to human-readable labels.
+ *
+ * @param {string} value - Schema gender_identity enum value.
+ * @returns {string} Display label.
+ */
+function genderLabel(value) {
+  if (!value) return '';
+  const labels = {
+    woman: 'Woman',
+    man: 'Man',
+    non_binary: 'Non-binary',
+    other: 'Other',
+    prefer_not_say: 'Prefer not to say',
   };
   return labels[value] || value;
 }
@@ -96,9 +115,11 @@ function housingLabel(value) {
  * @param {string} props.profile.display_name - Full display name.
  * @param {number} props.profile.age - Age in years.
  * @param {string} props.profile.city - City of residence.
+ * @param {string} props.profile.neighborhood - Neighborhood/area within the city.
+ * @param {string} props.profile.gender - Gender identity enum value.
  * @param {string} props.profile.housing_status - housing_status enum value.
- * @param {number} props.profile.budget_min - Minimum monthly budget (£).
- * @param {number} props.profile.budget_max - Maximum monthly budget (£).
+ * @param {number} props.profile.budget_min - Minimum monthly budget ($).
+ * @param {number} props.profile.budget_max - Maximum monthly budget ($).
  * @param {string} props.profile.cleanliness - cleanliness_level enum value.
  * @param {string} props.profile.smoking - smoking_pref enum value.
  * @param {string} props.profile.pets - pets_pref enum value.
@@ -112,6 +133,13 @@ function housingLabel(value) {
  * @returns {JSX.Element} A styled Bootstrap Card.
  */
 export default function ProfileCard({ profile, onLike, onPass, onBlock }) {
+  const locationParts = [
+    genderLabel(profile.gender),
+    profile.neighborhood,
+    profile.city,
+  ].filter(Boolean);
+  const locationText = locationParts.join(' · ');
+
   return (
     <Card className="profile-discovery-card mx-auto">
       <Card.Body className="p-4 position-relative">
@@ -142,7 +170,8 @@ export default function ProfileCard({ profile, onLike, onPass, onBlock }) {
               {profile.display_name}, {profile.age}
             </h4>
             <span className="text-muted-custom small">
-              {profile.city} · {housingLabel(profile.housing_status)}
+              {locationText ? `${locationText} · ` : ''}
+              {housingLabel(profile.housing_status)}
             </span>
           </div>
         </div>
@@ -151,7 +180,9 @@ export default function ProfileCard({ profile, onLike, onPass, onBlock }) {
         <div className="mb-3">
           <span className="profile-stat-label">Budget</span>
           <span className="profile-stat-value">
-            £{(profile.budget_min ?? 0).toLocaleString()} – £{(profile.budget_max ?? 0).toLocaleString()}
+            {'$'}
+            {(profile.budget_min ?? 0).toLocaleString()} – {'$'}
+            {(profile.budget_max ?? 0).toLocaleString()}
             /mo
           </span>
         </div>

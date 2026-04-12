@@ -32,7 +32,8 @@
 // smoking_pref:      'non_smoker' | 'outside_only' | 'smoker' | 'no_preference'
 // pets_pref:         'no_pets' | 'has_pets' | 'ok_with_pets' | 'no_preference'
 // sleep_schedule:    'early_bird' | 'night_owl' | 'flexible'
-// housing_status:    'HAS_APARTMENT' | 'LOOKING' | 'EITHER'
+// housing_status:    'HAS_APARTMENT' | 'LOOKING' | 'LOOKING_WITH_FLATMATE' | 'EITHER'
+// gender_identity:   'woman' | 'man' | 'non_binary' | 'other' | 'prefer_not_say'
 // guests_pref:       'rarely' | 'sometimes' | 'often' | 'no_preference'
 // noise_level:       'quiet' | 'moderate' | 'lively'
 
@@ -44,6 +45,8 @@ const CURRENT_USER = {
   display_name: 'Alex Chen',
   age: 24,
   city: 'London',
+  neighborhood: 'Clapham',
+  gender: 'man',
   housing_status: 'LOOKING',
   budget_min: 900,
   budget_max: 1400,
@@ -65,6 +68,8 @@ const BROWSE_PROFILES = [
     display_name: 'Priya Sharma',
     age: 23,
     city: 'London',
+    neighborhood: 'Bloomsbury',
+    gender: 'woman',
     housing_status: 'LOOKING',
     budget_min: 800,
     budget_max: 1200,
@@ -84,6 +89,8 @@ const BROWSE_PROFILES = [
     display_name: 'James Okonkwo',
     age: 25,
     city: 'London',
+    neighborhood: 'Canary Wharf',
+    gender: 'man',
     housing_status: 'LOOKING',
     budget_min: 1000,
     budget_max: 1500,
@@ -103,7 +110,9 @@ const BROWSE_PROFILES = [
     display_name: 'Sofia Marin',
     age: 22,
     city: 'London',
-    housing_status: 'LOOKING',
+    neighborhood: 'Shoreditch',
+    gender: 'woman',
+    housing_status: 'LOOKING_WITH_FLATMATE',
     budget_min: 600,
     budget_max: 900,
     cleanliness: 'moderate',
@@ -122,6 +131,8 @@ const BROWSE_PROFILES = [
     display_name: 'Tom Whitfield',
     age: 26,
     city: 'London',
+    neighborhood: 'Islington',
+    gender: 'man',
     housing_status: 'HAS_APARTMENT',
     budget_min: 1100,
     budget_max: 1600,
@@ -141,6 +152,8 @@ const BROWSE_PROFILES = [
     display_name: 'Amara Diallo',
     age: 27,
     city: 'London',
+    neighborhood: 'Brixton',
+    gender: 'woman',
     housing_status: 'LOOKING',
     budget_min: 800,
     budget_max: 1100,
@@ -160,6 +173,8 @@ const BROWSE_PROFILES = [
     display_name: 'Luca Ferri',
     age: 23,
     city: 'London',
+    neighborhood: 'Camden',
+    gender: 'man',
     housing_status: 'LOOKING',
     budget_min: 700,
     budget_max: 1000,
@@ -179,6 +194,8 @@ const BROWSE_PROFILES = [
     display_name: 'Hannah Park',
     age: 25,
     city: 'London',
+    neighborhood: 'Hackney',
+    gender: 'woman',
     housing_status: 'LOOKING',
     budget_min: 1000,
     budget_max: 1400,
@@ -198,6 +215,8 @@ const BROWSE_PROFILES = [
     display_name: 'Ravi Patel',
     age: 28,
     city: 'London',
+    neighborhood: 'Richmond',
+    gender: 'man',
     housing_status: 'HAS_APARTMENT',
     budget_min: 1200,
     budget_max: 1700,
@@ -254,7 +273,7 @@ const DUMMY_MESSAGES = {
     { message_id: 'msg-003', match_id: 'm-001', sender_id: 'u-002', body: "I was thinking end of April. My current tenancy runs out on the 30th.", created_at: '2025-03-07T16:20:00Z' },
     { message_id: 'msg-004', match_id: 'm-001', sender_id: 'u-001', body: "That works perfectly for me. What's your approach to cleaning? I like to stay on top of it.", created_at: '2025-03-07T17:00:00Z' },
     { message_id: 'msg-005', match_id: 'm-001', sender_id: 'u-002', body: "Same! I do a proper clean every Sunday and keep the kitchen tidy after every meal. Non-negotiable for me honestly.", created_at: '2025-03-07T17:10:00Z' },
-    { message_id: 'msg-006', match_id: 'm-001', sender_id: 'u-001', body: "That's exactly what I was hoping to hear. Budget-wise I'm comfortable up to £1,400 — does that give us enough to find something decent?", created_at: '2025-03-07T18:00:00Z' },
+    { message_id: 'msg-006', match_id: 'm-001', sender_id: 'u-001', body: "That's exactly what I was hoping to hear. Budget-wise I'm comfortable up to $1,400 — does that give us enough to find something decent?", created_at: '2025-03-07T18:00:00Z' },
     { message_id: 'msg-007', match_id: 'm-001', sender_id: 'u-002', body: "Sounds perfect! When can we talk?", created_at: '2025-03-07T18:30:00Z' },
   ],
   'm-002': [
@@ -270,7 +289,7 @@ const DUMMY_MESSAGES = {
     { message_id: 'msg-015', match_id: 'm-003', sender_id: 'u-001', body: "About a month now. It's quite competitive! I'm open to zones 2-4 if the place is nice.", created_at: '2025-03-05T18:15:00Z' },
     { message_id: 'msg-016', match_id: 'm-003', sender_id: 'u-008', body: "Same — I've been focusing on Hackney and Peckham. Both great areas, good transport.", created_at: '2025-03-05T18:30:00Z' },
     { message_id: 'msg-017', match_id: 'm-003', sender_id: 'u-001', body: "Hackney would be great. Are you looking for bills included or separate?", created_at: '2025-03-05T19:00:00Z' },
-    { message_id: 'msg-018', match_id: 'm-003', sender_id: 'u-008', body: "Prefer bills included — easier to budget. I'm fine going up to £1,400 with bills.", created_at: '2025-03-05T19:20:00Z' },
+    { message_id: 'msg-018', match_id: 'm-003', sender_id: 'u-008', body: "Prefer bills included — easier to budget. I'm fine going up to $1,400 with bills.", created_at: '2025-03-05T19:20:00Z' },
     { message_id: 'msg-019', match_id: 'm-003', sender_id: 'u-001', body: "That aligns really well. Are you okay with one very small, well-behaved pet? Just asking in advance.", created_at: '2025-03-05T19:50:00Z' },
     { message_id: 'msg-020', match_id: 'm-003', sender_id: 'u-008', body: "What area of London are you looking at?", created_at: '2025-03-05T20:15:00Z' },
   ],
@@ -409,6 +428,16 @@ export default class FlatmateApiClient {
    */
   async getCurrentUser() {
     return this.get('/profiles/me');
+  }
+
+  /**
+   * Fetches a profile by user_id (for matched profiles).
+   *
+   * @param {string} userId - The user's UUID.
+   * @returns {Promise<{ok: boolean, status: number, body: {user: Object}|null}>}
+   */
+  async getProfile(userId) {
+    return this.get(`/profiles/${userId}`);
   }
 
   /**

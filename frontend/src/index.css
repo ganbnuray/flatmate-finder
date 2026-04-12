@@ -297,8 +297,8 @@ a:hover {
 /* ── Profile Badges (lifestyle tags) ─────────────────────────────────────── */
 
 .profile-badge {
-  background-color: var(--border) !important;
-  color: var(--text-secondary) !important;
+  background-color: var(--border-light) !important;
+  color: var(--text-primary) !important;
   border: 1px solid var(--border-light);
   font-size: 0.75rem;
   font-weight: 500;
@@ -314,7 +314,7 @@ a:hover {
 .profile-stat-label {
   display: block;
   font-size: 0.75rem;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-weight: 600;
@@ -596,8 +596,17 @@ a:hover {
   border-color: var(--border-light);
 }
 
+.match-profile-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.match-profile-link:hover {
+  color: var(--text-primary);
+}
+
 .match-last-message {
-  color: var(--text-muted);
+  color: var(--text-secondary);
   line-height: 1.4;
 }
 
@@ -682,11 +691,30 @@ a:hover {
 
 .sidebar-match-preview {
   font-size: 0.78rem;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   margin-top: 0.1rem;
+}
+
+.sidebar-profile-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.sidebar-profile-link:hover {
+  color: var(--text-primary);
+}
+
+.sidebar-unread-dot,
+.match-unread-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35);
+  flex-shrink: 0;
 }
 
 /* Thread panel */
@@ -694,6 +722,7 @@ a:hover {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -701,6 +730,7 @@ a:hover {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
 }
 
 .thread-empty-state {
@@ -721,6 +751,15 @@ a:hover {
   align-items: center;
 }
 
+.thread-profile-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.thread-profile-link:hover {
+  color: var(--text-primary);
+}
+
 .thread-messages {
   flex: 1;
   overflow-y: auto;
@@ -728,6 +767,7 @@ a:hover {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  min-height: 0;
 }
 
 /* Message bubbles */
@@ -782,6 +822,7 @@ a:hover {
   padding: 1rem 1.5rem;
   border-top: 1px solid var(--border);
   background-color: var(--bg-secondary);
+  margin-top: auto;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
