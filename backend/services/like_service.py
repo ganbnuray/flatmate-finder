@@ -1,6 +1,6 @@
 import psycopg2
 import uuid
-from db import get_db
+from db import get_db, get_db_cursor
 
 
 def is_valid_uuid(value):
@@ -29,9 +29,36 @@ def record_like(current_user_id, target_user_id):
         raise ValueError("invalid target_user_id")
 
     conn = get_db()
-    cur = conn.cursor()
+    cur = get_db_cursor(conn)
 
     try:
+        cur.execute(
+            "SELECT is_complete FROM profiles WHERE user_id = %s",
+            (current_user_id,),
+        )
+        current_profile = cur.fetchone()
+        if not current_profile or not current_profile["is_complete"]:
+            raise ValueError("complete your profile to like")
+
+        cur.execute(
+            "SELECT is_complete FROM profiles WHERE user_id = %s",
+            (target_user_id,),
+        )
+        target_profile = cur.fetchone()
+        if not target_profile or not target_profile["is_complete"]:
+            raise ValueError("target profile not available")
+
+        cur.execute(
+            """
+            SELECT 1 FROM blocks
+            WHERE (blocker_id = %s AND blocked_id = %s)
+               OR (blocker_id = %s AND blocked_id = %s)
+        """,
+            (current_user_id, target_user_id, target_user_id, current_user_id),
+        )
+        if cur.fetchone():
+            raise ValueError("cannot like blocked profile")
+
         cur.execute(
             "INSERT INTO likes (liker_id, liked_id, action) VALUES (%s, %s, %s)",
             (current_user_id, target_user_id, "LIKE"),
@@ -49,10 +76,23 @@ def record_like(current_user_id, target_user_id):
             user_a = min(current_user_id, target_user_id)
             user_b = max(current_user_id, target_user_id)
             cur.execute(
-                "INSERT INTO matches (user_a_id, user_b_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                "SELECT id, status FROM matches WHERE user_a_id = %s AND user_b_id = %s",
                 (user_a, user_b),
             )
-            match_created = True
+            existing_match = cur.fetchone()
+            if existing_match:
+                if existing_match["status"] != "active":
+                    cur.execute(
+                        "UPDATE matches SET status = 'active' WHERE id = %s",
+                        (existing_match["id"],),
+                    )
+                match_created = True
+            else:
+                cur.execute(
+                    "INSERT INTO matches (user_a_id, user_b_id) VALUES (%s, %s)",
+                    (user_a, user_b),
+                )
+                match_created = True
 
         conn.commit()
         return {"matched": match_created}
@@ -83,9 +123,28 @@ def record_pass(current_user_id, target_user_id):
         raise ValueError("invalid target_user_id")
 
     conn = get_db()
-    cur = conn.cursor()
+    cur = get_db_cursor(conn)
 
     try:
+        cur.execute(
+            "SELECT is_complete FROM profiles WHERE user_id = %s",
+            (current_user_id,),
+        )
+        current_profile = cur.fetchone()
+        if not current_profile or not current_profile["is_complete"]:
+            raise ValueError("complete your profile to pass")
+
+        cur.execute(
+            """
+            SELECT 1 FROM blocks
+            WHERE (blocker_id = %s AND blocked_id = %s)
+               OR (blocker_id = %s AND blocked_id = %s)
+        """,
+            (current_user_id, target_user_id, target_user_id, current_user_id),
+        )
+        if cur.fetchone():
+            raise ValueError("cannot pass blocked profile")
+
         cur.execute(
             "INSERT INTO likes (liker_id, liked_id, action) VALUES (%s, %s, %s)",
             (current_user_id, target_user_id, "PASS"),

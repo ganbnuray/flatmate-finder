@@ -6,6 +6,7 @@ from flask import Flask, jsonify, make_response, request, session
 from flask.json.provider import DefaultJSONProvider
 from dotenv import load_dotenv
 
+from decorators import login_required
 from services import like_service
 from services import auth_service
 from services import profile_service
@@ -75,9 +76,8 @@ def create_app():
         except ValueError as e:
             return make_response(jsonify({"error": str(e)}), 409)
         except Exception as e:
-            return make_response(
-                jsonify({"error": "failed to register user", "details": str(e)}), 500
-            )
+            app.logger.exception("Failed to register user")
+            return make_response(jsonify({"error": "failed to register user"}), 500)
 
     @app.route("/auth/login", methods=["POST"])
     def login():
@@ -108,9 +108,8 @@ def create_app():
             status_code = 403 if "deactivated" in str(e) else 401
             return make_response(jsonify({"error": str(e)}), status_code)
         except Exception as e:
-            return make_response(
-                jsonify({"error": "login failed", "details": str(e)}), 500
-            )
+            app.logger.exception("Login failed")
+            return make_response(jsonify({"error": "login failed"}), 500)
 
     @app.route("/auth/logout", methods=["DELETE"])
     def logout():
@@ -123,6 +122,7 @@ def create_app():
         return make_response("", 204)
 
     @app.route("/profiles/me", methods=["GET"])
+    @login_required
     def get_my_profile():
         """Retrieves the authenticated user's profile.
 
@@ -134,20 +134,17 @@ def create_app():
             404: If profile does not exist.
             500: Database error.
         """
-        if "user_id" not in session:
-            return make_response(jsonify({"error": "unauthorized"}), 401)
-
         try:
             profile = profile_service.get_profile(session["user_id"])
             return make_response(jsonify(profile), 200)
         except ValueError as e:
             return make_response(jsonify({"error": str(e)}), 404)
         except Exception as e:
-            return make_response(
-                jsonify({"error": "failed to fetch profile", "details": str(e)}), 500
-            )
+            app.logger.exception("Failed to fetch profile")
+            return make_response(jsonify({"error": "failed to fetch profile"}), 500)
 
     @app.route("/profiles/me", methods=["POST", "PUT"])
+    @login_required
     def upsert_profile():
         """Creates or updates the authenticated user's profile.
 
@@ -159,9 +156,6 @@ def create_app():
             400: Missing required fields or invalid constraints.
             500: Failed to save profile to database.
         """
-        if "user_id" not in session:
-            return make_response(jsonify({"error": "unauthorized"}), 401)
-
         data = request.get_json()
         if not data:
             return make_response(jsonify({"error": "request body is missing"}), 400)
@@ -170,6 +164,7 @@ def create_app():
             "display_name",
             "age",
             "city",
+            "neighborhood",
             "housing_status",
             "budget_min",
             "budget_max",
@@ -191,11 +186,11 @@ def create_app():
         except ValueError as e:
             return make_response(jsonify({"error": str(e)}), 400)
         except Exception as e:
-            return make_response(
-                jsonify({"error": "failed to save profile", "details": str(e)}), 500
-            )
+            app.logger.exception("Failed to save profile")
+            return make_response(jsonify({"error": "failed to save profile"}), 500)
 
     @app.route("/profiles", methods=["GET"])
+    @login_required
     def discover_profiles():
         """Retrieves a feed of candidate profiles excluding self, blocked, or acted-upon users.
 
@@ -207,21 +202,19 @@ def create_app():
             403: If the current user's profile is incomplete.
             500: Database error loading the feed.
         """
-        if "user_id" not in session:
-            return make_response(jsonify({"error": "unauthorized"}), 401)
-
         try:
             profiles = profile_service.get_discovery_feed(session["user_id"])
             return make_response(jsonify(profiles), 200)
         except ValueError as e:
             return make_response(jsonify({"error": str(e)}), 403)
         except Exception as e:
+            app.logger.exception("Failed to load discovery feed")
             return make_response(
-                jsonify({"error": "failed to load discovery feed", "details": str(e)}),
-                500,
+                jsonify({"error": "failed to load discovery feed"}), 500
             )
 
     @app.route("/profiles/<target_user_id>/like", methods=["POST"])
+    @login_required
     def like_profile(target_user_id):
         """Records a like action for a target profile.
 
@@ -236,18 +229,16 @@ def create_app():
             401: If unauthorized.
             409: If the current user has already acted on this profile.
         """
-        if "user_id" not in session:
-            return make_response(jsonify({"error": "unauthorized"}), 401)
-
         try:
             result = like_service.record_like(session["user_id"], target_user_id)
             return make_response(jsonify(result), 201)
-        except ValueError:
-            return make_response(jsonify({"error": "invalid user id"}), 400)
+        except ValueError as e:
+            return make_response(jsonify({"error": str(e)}), 400)
         except psycopg2.IntegrityError:
             return make_response(jsonify({"error": "already acted on this user"}), 409)
 
     @app.route("/profiles/<target_user_id>/pass", methods=["POST"])
+    @login_required
     def pass_profile(target_user_id):
         """Records a pass action for a target profile.
 
@@ -262,170 +253,107 @@ def create_app():
             401: If unauthorized.
             409: If the current user has already acted on this profile.
         """
-        if "user_id" not in session:
-            return make_response(jsonify({"error": "unauthorized"}), 401)
-
         try:
             result = like_service.record_pass(session["user_id"], target_user_id)
             return make_response(jsonify(result), 201)
-        except ValueError:
-            return make_response(jsonify({"error": "invalid user id"}), 400)
+        except ValueError as e:
+            return make_response(jsonify({"error": str(e)}), 400)
         except psycopg2.IntegrityError:
             return make_response(jsonify({"error": "already acted on this user"}), 409)
 
-    @app.route("/matches", methods=["GET"])
-    def get_matches():
-        """Retrieves all active matches for the authenticated user.
+    @app.route("/profiles/<target_user_id>", methods=["GET"])
+    @login_required
+    def get_profile_detail(target_user_id):
+        """Retrieves a matched user's profile details.
 
         Returns:
-            JSON object with key "matches" containing a list of match dicts,
-            each including the partner's profile data and the most recent message body.
+            JSON representation of the matched user's profile data.
 
         Raises:
             401: If unauthorized.
-            400: If the user_id is malformed.
-            500: Database error.
+            404: If the profile is not accessible (not matched or blocked).
         """
-        if "user_id" not in session:
-            return make_response(jsonify({"error": "unauthorized"}), 401)
+        try:
+            profile = profile_service.get_matched_profile(session["user_id"], target_user_id)
+            return make_response(jsonify(profile), 200)
+        except ValueError as e:
+            return make_response(jsonify({"error": str(e)}), 404)
+        except Exception as e:
+            app.logger.exception("Failed to fetch profile detail")
+            return make_response(jsonify({"error": "failed to fetch profile"}), 500)
 
+    @app.route("/matches", methods=["GET"])
+    @login_required
+    def get_matches():
+        """Fetches matches for the current user."""
         try:
             matches = match_service.get_matches(session["user_id"])
             return make_response(jsonify({"matches": matches}), 200)
-        except ValueError as e:
-            return make_response(jsonify({"error": str(e)}), 400)
         except Exception as e:
-            return make_response(
-                jsonify({"error": "failed to fetch matches", "details": str(e)}), 500
-            )
+            app.logger.exception("Failed to load matches")
+            return make_response(jsonify({"error": "failed to load matches"}), 500)
 
     @app.route("/matches/<match_id>/messages", methods=["GET"])
-    def get_messages(match_id):
-        """Retrieves all messages for an active match in chronological order.
-
-        Args:
-            match_id: The UUID of the match.
-
-        Returns:
-            JSON array of message dicts (id, sender_id, body, created_at).
-
-        Raises:
-            401: If unauthorized.
-            404: If the match does not exist or the user is not a participant.
-            500: Database error.
-        """
-        if "user_id" not in session:
-            return make_response(jsonify({"error": "unauthorized"}), 401)
-
+    @login_required
+    def get_match_messages(match_id):
+        """Fetches messages for a match conversation."""
         try:
             messages = message_service.get_match_messages(match_id, session["user_id"])
             return make_response(jsonify(messages), 200)
         except ValueError as e:
-            return make_response(jsonify({"error": str(e)}), 404)
+            return make_response(jsonify({"error": str(e)}), 403)
         except Exception as e:
-            return make_response(
-                jsonify({"error": "failed to fetch messages", "details": str(e)}), 500
-            )
+            app.logger.exception("Failed to load messages")
+            return make_response(jsonify({"error": "failed to load messages"}), 500)
 
     @app.route("/matches/<match_id>/messages", methods=["POST"])
-    def send_message(match_id):
-        """Sends a new message within an active match.
-
-        Args:
-            match_id: The UUID of the match.
-
-        Returns:
-            JSON dict of the newly created message (id, sender_id, body, created_at).
-
-        Raises:
-            401: If unauthorized.
-            400: If body is missing, empty, or exceeds 2000 characters,
-                 or if the user is not a participant in the match.
-            500: Database error.
-        """
-        if "user_id" not in session:
-            return make_response(jsonify({"error": "unauthorized"}), 401)
-
-        data = request.get_json()
-        if not data or not data.get("body"):
-            return make_response(jsonify({"error": "message body is required"}), 400)
+    @login_required
+    def send_match_message(match_id):
+        """Sends a new message in a match conversation."""
+        data = request.get_json() or {}
+        body = data.get("body", "")
 
         try:
-            message = message_service.send_match_message(
-                match_id, session["user_id"], data["body"]
-            )
+            message = message_service.send_match_message(match_id, session["user_id"], body)
             return make_response(jsonify(message), 201)
         except ValueError as e:
             return make_response(jsonify({"error": str(e)}), 400)
         except Exception as e:
-            return make_response(
-                jsonify({"error": "failed to send message", "details": str(e)}), 500
-            )
+            app.logger.exception("Failed to send message")
+            return make_response(jsonify({"error": "failed to send message"}), 500)
 
     @app.route("/profiles/<target_user_id>/block", methods=["POST"])
+    @login_required
     def block_user(target_user_id):
-        """Blocks a user, preventing future interactions and discovery appearances.
-
-        Args:
-            target_user_id: The UUID of the user to block.
-
-        Returns:
-            JSON dict with a success message.
-
-        Raises:
-            401: If unauthorized.
-            400: If attempting to block oneself.
-            500: Database error.
-        """
-        if "user_id" not in session:
-            return make_response(jsonify({"error": "unauthorized"}), 401)
-
+        """Blocks a user."""
         try:
             result = abuse_service.block_user(session["user_id"], target_user_id)
-            return make_response(jsonify(result), 200)
-        except ValueError as e:
-            return make_response(jsonify({"error": str(e)}), 400)
-        except Exception as e:
-            return make_response(
-                jsonify({"error": "failed to block user", "details": str(e)}), 500
-            )
-
-    @app.route("/profiles/<target_user_id>/report", methods=["POST"])
-    def report_user(target_user_id):
-        """Submits a moderation report against a user.
-
-        Args:
-            target_user_id: The UUID of the user being reported.
-
-        Returns:
-            JSON dict with a success message.
-
-        Raises:
-            401: If unauthorized.
-            400: If reason is missing, invalid, or attempting to report oneself.
-            500: Database error.
-        """
-        if "user_id" not in session:
-            return make_response(jsonify({"error": "unauthorized"}), 401)
-
-        data = request.get_json()
-        if not data or not data.get("reason"):
-            return make_response(jsonify({"error": "reason is required"}), 400)
-
-        try:
-            result = abuse_service.report_user(
-                session["user_id"],
-                target_user_id,
-                data["reason"],
-                data.get("details", ""),
-            )
             return make_response(jsonify(result), 201)
         except ValueError as e:
             return make_response(jsonify({"error": str(e)}), 400)
         except Exception as e:
-            return make_response(
-                jsonify({"error": "failed to report user", "details": str(e)}), 500
-            )
+            app.logger.exception("Failed to block user")
+            return make_response(jsonify({"error": "failed to block user"}), 500)
+
+    @app.route("/profiles/<target_user_id>/report", methods=["POST"])
+    @login_required
+    def report_user(target_user_id):
+        """Reports a user for abuse."""
+        data = request.get_json() or {}
+        reason = data.get("reason")
+        details = data.get("details", "")
+
+        if not reason:
+            return make_response(jsonify({"error": "reason is required"}), 400)
+
+        try:
+            result = abuse_service.report_user(session["user_id"], target_user_id, reason, details)
+            return make_response(jsonify(result), 201)
+        except ValueError as e:
+            return make_response(jsonify({"error": str(e)}), 400)
+        except Exception as e:
+            app.logger.exception("Failed to report user")
+            return make_response(jsonify({"error": "failed to report user"}), 500)
 
     return app
 
