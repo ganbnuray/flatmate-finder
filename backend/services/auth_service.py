@@ -1,5 +1,5 @@
 import bcrypt
-from db import get_db, get_db_cursor
+from db import get_db, get_db_cursor, put_db_connection
 
 
 def register_user(email, password):
@@ -41,7 +41,7 @@ def register_user(email, password):
         raise e
     finally:
         cur.close()
-        conn.close()
+        put_db_connection(conn)
 
 
 def login_user(email, password):
@@ -84,4 +84,4 @@ def login_user(email, password):
         raise e
     finally:
         cur.close()
-        conn.close()
+        put_db_connection(conn)

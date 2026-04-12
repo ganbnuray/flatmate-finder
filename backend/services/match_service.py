@@ -1,4 +1,4 @@
-from db import get_db, get_db_cursor
+from db import get_db, get_db_cursor, put_db_connection
 
 
 def get_matches(user_id):
@@ -33,4 +33,4 @@ def get_matches(user_id):
         return [dict(m) for m in matches]
     finally:
         cur.close()
-        conn.close()
+        put_db_connection(conn)
