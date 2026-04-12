@@ -27,12 +27,23 @@ class JSONProvider(DefaultJSONProvider):
 
 
 def create_app():
+    from db import init_db_pool, close_db_pool
+
     app = Flask(__name__)
     app.json_provider_class = JSONProvider
     app.json = JSONProvider(app)
     app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev_secret_key")
 
     ALLOWED_ORIGIN = "http://localhost:3000"
+
+    # Initialize the connection pool
+    init_db_pool()
+
+    @app.teardown_appcontext
+    def teardown_db(exception):
+        # We don't close the whole pool per-request, but we can close it
+        # here if needed for clean shutdown. Usually the pool persists.
+        pass
 
     @app.after_request
     def add_cors_headers(response):

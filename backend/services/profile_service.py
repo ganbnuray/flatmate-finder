@@ -1,5 +1,5 @@
 import uuid
-from db import get_db, get_db_cursor
+from db import get_db, get_db_cursor, put_db_connection
 
 
 def is_valid_uuid(value):
@@ -35,7 +35,7 @@ def get_profile(user_id):
         return dict(profile)
     finally:
         cur.close()
-        conn.close()
+        put_db_connection(conn)
 
 
 def get_matched_profile(current_user_id, target_user_id):
@@ -83,7 +83,7 @@ def get_matched_profile(current_user_id, target_user_id):
         return dict(profile)
     finally:
         cur.close()
-        conn.close()
+        put_db_connection(conn)
 
 
 def upsert_profile(user_id, profile_data):
@@ -200,7 +200,7 @@ def upsert_profile(user_id, profile_data):
         raise e
     finally:
         cur.close()
-        conn.close()
+        put_db_connection(conn)
 
 
 def get_discovery_feed(user_id):
@@ -249,4 +249,4 @@ def get_discovery_feed(user_id):
 
     finally:
         cur.close()
-        conn.close()
+        put_db_connection(conn)
