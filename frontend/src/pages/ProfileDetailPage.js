@@ -9,6 +9,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, Alert, Badge } from 'react-bootstrap';
 import { useApi } from '../contexts/ApiProvider';
 import { getAccentColor, getInitials } from '../utils/avatarHelpers';
+import { formatBudgetRange } from '../utils/formatters';
 
 /** Human-readable labels for enum values displayed in read mode. */
 const LABELS = {
@@ -206,9 +207,7 @@ export default function ProfileDetailPage() {
                   <Col xs={12} md={6}>
                     <span className="profile-detail-label">Budget</span>
                     <span className="profile-detail-value">
-                      {'$'}
-                      {profile.budget_min?.toLocaleString()} – {'$'}
-                      {profile.budget_max?.toLocaleString()}/mo
+                      {formatBudgetRange(profile.budget_min, profile.budget_max)}
                     </span>
                   </Col>
                 </Row>

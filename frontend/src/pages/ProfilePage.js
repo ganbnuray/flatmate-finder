@@ -19,6 +19,7 @@ import {
   Badge,
 } from 'react-bootstrap';
 import { useUser } from '../contexts/UserProvider';
+import { formatBudgetRange } from '../utils/formatters';
 
 /** Human-readable labels for enum values displayed in read mode. */
 const LABELS = {
@@ -288,9 +289,7 @@ export default function ProfilePage() {
                       <Col xs={12} md={6}>
                         <span className="profile-detail-label">Budget</span>
                         <span className="profile-detail-value">
-                          {'$'}
-                          {user.budget_min?.toLocaleString()} – {'$'}
-                          {user.budget_max?.toLocaleString()}/mo
+                          {formatBudgetRange(user.budget_min, user.budget_max)}
                         </span>
                       </Col>
                     </Row>

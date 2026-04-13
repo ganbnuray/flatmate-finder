@@ -8,6 +8,7 @@
 
 import { Card, Button, Badge, Dropdown } from 'react-bootstrap';
 import { getInitials, getAccentColor } from '../utils/avatarHelpers';
+import { formatBudgetRange } from '../utils/formatters';
 
 /**
  * Maps cleanliness enum values to human-readable labels.
@@ -180,10 +181,7 @@ export default function ProfileCard({ profile, onLike, onPass, onBlock }) {
         <div className="mb-3">
           <span className="profile-stat-label">Budget</span>
           <span className="profile-stat-value">
-            {'$'}
-            {(profile.budget_min ?? 0).toLocaleString()} – {'$'}
-            {(profile.budget_max ?? 0).toLocaleString()}
-            /mo
+            {formatBudgetRange(profile.budget_min, profile.budget_max)}
           </span>
         </div>
 
