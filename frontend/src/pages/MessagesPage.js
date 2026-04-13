@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Container,
   Row,
@@ -59,38 +59,112 @@ export default function MessagesPage() {
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [, setReadVersion] = useState(0);
 
   // Ref to the bottom of the message list for auto-scroll.
   const threadEndRef = useRef(null);
+  const threadContainerRef = useRef(null);
+  const isAtBottomRef = useRef(true);
 
-  // Fetch all matches for the sidebar on mount.
-  useEffect(() => {
-    (async () => {
-      const response = await api.getMatches();
-      if (response.ok) {
-        setMatches(response.body.matches);
-      }
-    })();
+  const LAST_READ_PREFIX = 'flatmate:last_read:';
+
+  const getLastReadAt = useCallback(
+    (targetMatchId) => {
+      if (!targetMatchId) return 0;
+      const stored = localStorage.getItem(`${LAST_READ_PREFIX}${targetMatchId}`);
+      return stored ? new Date(stored).getTime() : 0;
+    },
+    [LAST_READ_PREFIX],
+  );
+
+  const markMatchRead = useCallback(
+    (targetMatchId, timestamp) => {
+      if (!targetMatchId || !timestamp) return;
+      localStorage.setItem(`${LAST_READ_PREFIX}${targetMatchId}`, timestamp);
+      setReadVersion((prev) => prev + 1);
+    },
+    [LAST_READ_PREFIX, setReadVersion],
+  );
+
+  const handleThreadScroll = useCallback(() => {
+    const container = threadContainerRef.current;
+    if (!container) return;
+    const threshold = 48;
+    isAtBottomRef.current =
+      container.scrollTop + container.clientHeight >= container.scrollHeight - threshold;
+  }, []);
+
+  const fetchMatches = useCallback(async () => {
+    const response = await api.getMatches();
+    if (response.ok) {
+      setMatches(response.body.matches);
+    }
   }, [api]);
 
-  // Fetch messages whenever the active match changes.
-  useEffect(() => {
+  const fetchMessages = useCallback(async () => {
     if (!matchId) {
       setMessages([]);
       return;
     }
-    (async () => {
-      const response = await api.getMessages(matchId);
-      if (response.ok) {
-        setMessages(response.body);
-      }
-    })();
+    const response = await api.getMessages(matchId);
+    if (response.ok) {
+      setMessages(response.body);
+    }
   }, [api, matchId]);
 
-  // Scroll to the bottom of the thread whenever messages change.
+  const refreshConversation = useCallback(
+    async (showSpinner = true) => {
+      if (showSpinner) {
+        setRefreshing(true);
+      }
+      await Promise.all([fetchMatches(), fetchMessages()]);
+      if (showSpinner) {
+        setRefreshing(false);
+      }
+    },
+    [fetchMatches, fetchMessages],
+  );
+
+  // Fetch all matches for the sidebar on mount.
   useEffect(() => {
-    threadEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    fetchMatches();
+  }, [fetchMatches]);
+
+  // Fetch messages whenever the active match changes.
+  useEffect(() => {
+    fetchMessages();
+  }, [fetchMessages]);
+
+  // Auto-refresh the active thread for new messages.
+  useEffect(() => {
+    if (!matchId) return;
+    const interval = setInterval(() => {
+      refreshConversation(false);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [matchId, refreshConversation]);
+
+  // Reset scroll behavior when switching threads.
+  useEffect(() => {
+    isAtBottomRef.current = true;
+  }, [matchId]);
+
+  // Scroll to the bottom only when the user is already near the end.
+  useEffect(() => {
+    if (isAtBottomRef.current) {
+      threadEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages]);
+
+  // Mark the active conversation as read after loading messages.
+  useEffect(() => {
+    if (!matchId || messages.length === 0) return;
+    const latest = messages[messages.length - 1];
+    if (latest?.created_at) {
+      markMatchRead(matchId, latest.created_at);
+    }
+  }, [matchId, messages, markMatchRead]);
 
   /**
    * Sends the current message and appends it to the thread on success.
@@ -112,13 +186,26 @@ export default function MessagesPage() {
           if (prev.some((m) => m.id === msg.id)) return prev;
           return [...prev, msg];
         });
+        setMatches((prev) =>
+          prev.map((match) =>
+            match.match_id === matchId
+              ? {
+                  ...match,
+                  last_message: response.body.body,
+                  last_message_at: response.body.created_at,
+                  last_message_sender_id: response.body.sender_id,
+                }
+              : match,
+          ),
+        );
+        markMatchRead(matchId, response.body.created_at);
         setNewMessage('');
       } else {
         setSendError('Failed to send message. Please try again.');
       }
       setSending(false);
     },
-    [api, matchId, newMessage],
+    [api, matchId, newMessage, markMatchRead],
   );
 
   const handleBlock = async () => {
@@ -162,6 +249,16 @@ export default function MessagesPage() {
     }
   };
 
+  const hasUnread = (match) => {
+    if (!match?.last_message_at || !match.last_message) return false;
+    if (match.last_message_sender_id && match.last_message_sender_id === user?.user_id) {
+      return false;
+    }
+    const lastReadAt = getLastReadAt(match.match_id);
+    const lastMessageAt = new Date(match.last_message_at).getTime();
+    return lastMessageAt > lastReadAt;
+  };
+
   const activeMatch = matches.find((m) => m.match_id === matchId);
 
   return (
@@ -186,14 +283,29 @@ export default function MessagesPage() {
                   onClick={() => navigate(`/messages/${match.match_id}`)}
                   type="button"
                 >
-                  <div
-                    className="profile-avatar-sm"
-                    style={{ backgroundColor: getAccentColor(match.user_id) }}
+                  <Link
+                    to={`/profiles/${match.user_id}`}
+                    className="sidebar-profile-link"
+                    onClick={(event) => event.stopPropagation()}
                   >
-                    {getInitials(match.display_name)}
-                  </div>
+                    <div
+                      className="profile-avatar-sm"
+                      style={{ backgroundColor: getAccentColor(match.user_id) }}
+                    >
+                      {getInitials(match.display_name)}
+                    </div>
+                  </Link>
                   <div className="sidebar-match-info">
-                    <div className="sidebar-match-name">{match.display_name}</div>
+                    <div className="d-flex align-items-center gap-2">
+                      <Link
+                        to={`/profiles/${match.user_id}`}
+                        className="sidebar-profile-link sidebar-match-name"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        {match.display_name}
+                      </Link>
+                      {hasUnread(match) && <span className="sidebar-unread-dot" />}
+                    </div>
                     <div className="sidebar-match-preview">
                       {match.last_message || 'No messages yet'}
                     </div>
@@ -220,7 +332,10 @@ export default function MessagesPage() {
                 <div className="thread-header d-flex justify-content-between align-items-center">
                   {activeMatch && (
                     <>
-                      <div className="d-flex align-items-center gap-2">
+                      <Link
+                        to={`/profiles/${activeMatch.user_id}`}
+                        className="thread-profile-link d-flex align-items-center gap-2"
+                      >
                         <div
                           className="profile-avatar-sm"
                           style={{ backgroundColor: getAccentColor(activeMatch.user_id) }}
@@ -230,27 +345,41 @@ export default function MessagesPage() {
                         <span className="fw-semibold">
                           {activeMatch.display_name}
                         </span>
+                      </Link>
+
+                      <div className="d-flex align-items-center gap-2">
+                        <Button
+                          variant="outline-secondary"
+                          size="sm"
+                          onClick={() => refreshConversation(true)}
+                          disabled={refreshing}
+                        >
+                          {refreshing ? 'Refreshing…' : 'Refresh'}
+                        </Button>
+                        <Dropdown align="end">
+                          <Dropdown.Toggle variant="link" className="text-muted p-0 border-0 text-decoration-none fs-5">
+                            ⋮
+                          </Dropdown.Toggle>
+                          <Dropdown.Menu>
+                            <Dropdown.Item onClick={handleReport} className="text-warning">
+                              Report
+                            </Dropdown.Item>
+                            <Dropdown.Item onClick={handleBlock} className="text-danger">
+                              Block
+                            </Dropdown.Item>
+                          </Dropdown.Menu>
+                        </Dropdown>
                       </div>
-                      
-                      <Dropdown align="end">
-                        <Dropdown.Toggle variant="link" className="text-muted p-0 border-0 text-decoration-none fs-5">
-                          ⋮
-                        </Dropdown.Toggle>
-                        <Dropdown.Menu>
-                          <Dropdown.Item onClick={handleReport} className="text-warning">
-                            Report
-                          </Dropdown.Item>
-                          <Dropdown.Item onClick={handleBlock} className="text-danger">
-                            Block
-                          </Dropdown.Item>
-                        </Dropdown.Menu>
-                      </Dropdown>
                     </>
                   )}
                 </div>
 
                 {/* Messages */}
-                <div className="thread-messages">
+                <div
+                  className="thread-messages"
+                  ref={threadContainerRef}
+                  onScroll={handleThreadScroll}
+                >
                   {messages.map((msg) => {
                     const isSent = msg.sender_id === user?.user_id;
                     return (

@@ -129,6 +129,16 @@ export default class FlatmateApiClient {
   }
 
   /**
+   * Fetches a profile by user_id (for matched profiles).
+   *
+   * @param {string} userId - The user's UUID.
+   * @returns {Promise<{ok: boolean, status: number, body: {user: Object}|null}>}
+   */
+  async getProfile(userId) {
+    return this.get(`/profiles/${userId}`);
+  }
+
+  /**
    * Fetches the discovery feed — profiles the current user has not yet
    * liked or passed.
    *

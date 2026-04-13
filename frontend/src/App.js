@@ -22,6 +22,7 @@ import DiscoveryPage from './pages/DiscoveryPage';
 import MatchesPage from './pages/MatchesPage';
 import MessagesPage from './pages/MessagesPage';
 import ProfilePage from './pages/ProfilePage';
+import ProfileDetailPage from './pages/ProfileDetailPage';
 
 /**
  * Root application component.
@@ -111,6 +112,14 @@ export default function App() {
               element={
                 <PrivateRoute>
                   <ProfilePage />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/profiles/:userId"
+              element={
+                <PrivateRoute>
+                  <ProfileDetailPage />
                 </PrivateRoute>
               }
             />
