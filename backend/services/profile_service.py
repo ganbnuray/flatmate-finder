@@ -1,4 +1,13 @@
+import uuid
 from db import get_db, get_db_cursor, put_db_connection
+
+
+def is_valid_uuid(value):
+    try:
+        uuid.UUID(str(value))
+        return True
+    except ValueError:
+        return False
 
 
 def get_profile(user_id):
@@ -29,6 +38,54 @@ def get_profile(user_id):
         put_db_connection(conn)
 
 
+def get_matched_profile(current_user_id, target_user_id):
+    """Retrieves a matched user's profile for the current user.
+
+    Args:
+        current_user_id: The UUID of the requesting user.
+        target_user_id: The UUID of the matched profile to view.
+
+    Returns:
+        dict: The matched user's profile data.
+
+    Raises:
+        ValueError: If the target user is invalid, not matched, or blocked.
+    """
+    if not is_valid_uuid(target_user_id):
+        raise ValueError("invalid target user")
+
+    conn = get_db()
+    cur = get_db_cursor(conn)
+
+    try:
+        cur.execute(
+            """
+            SELECT p.*
+            FROM profiles p
+            JOIN matches m ON (
+                (m.user_a_id = p.user_id AND m.user_b_id = %s)
+                OR
+                (m.user_b_id = p.user_id AND m.user_a_id = %s)
+            )
+            WHERE p.user_id = %s
+            AND m.status = 'active'
+            AND NOT EXISTS (
+                SELECT 1 FROM blocks b
+                WHERE (b.blocker_id = p.user_id AND b.blocked_id = %s)
+                   OR (b.blocker_id = %s AND b.blocked_id = p.user_id)
+            )
+        """,
+            (current_user_id, current_user_id, target_user_id, current_user_id, current_user_id),
+        )
+        profile = cur.fetchone()
+        if not profile:
+            raise ValueError("profile not found")
+        return dict(profile)
+    finally:
+        cur.close()
+        put_db_connection(conn)
+
+
 def upsert_profile(user_id, profile_data):
     """Creates or updates a user profile.
 
@@ -52,16 +109,35 @@ def upsert_profile(user_id, profile_data):
         cur.execute("SELECT id FROM profiles WHERE user_id = %s", (user_id,))
         exists = cur.fetchone()
 
-        # Determine if profile is complete (could be more complex logic)
-        is_complete = True
+        def has_value(value):
+            if value is None:
+                return False
+            if isinstance(value, str):
+                return value.strip() != ""
+            return True
+
+        required_fields = [
+            "display_name",
+            "age",
+            "city",
+            "neighborhood",
+            "housing_status",
+            "budget_min",
+            "budget_max",
+            "cleanliness",
+            "smoking",
+            "pets",
+            "sleep_schedule",
+        ]
+        is_complete = all(has_value(profile_data.get(field)) for field in required_fields)
 
         if exists:
             cur.execute(
                 """
                 UPDATE profiles 
-                SET display_name = %s, age = %s, city = %s, housing_status = %s, budget_min = %s, budget_max = %s, 
-                    bio = %s, cleanliness = %s, smoking = %s, pets = %s, sleep_schedule = %s, guests = %s, noise_level = %s,
-                    is_complete = %s
+                SET display_name = %s, age = %s, city = %s, neighborhood = %s, gender = %s, housing_status = %s,
+                    budget_min = %s, budget_max = %s, bio = %s, cleanliness = %s, smoking = %s, pets = %s,
+                    sleep_schedule = %s, guests = %s, noise_level = %s, is_complete = %s
                 WHERE user_id = %s
                 RETURNING *
             """,
@@ -69,6 +145,8 @@ def upsert_profile(user_id, profile_data):
                     profile_data["display_name"],
                     profile_data["age"],
                     profile_data["city"],
+                    profile_data["neighborhood"],
+                    profile_data.get("gender", "prefer_not_say"),
                     profile_data["housing_status"],
                     profile_data["budget_min"],
                     profile_data["budget_max"],
@@ -86,9 +164,10 @@ def upsert_profile(user_id, profile_data):
         else:
             cur.execute(
                 """
-                INSERT INTO profiles (user_id, display_name, age, city, housing_status, budget_min, budget_max, 
-                                    bio, cleanliness, smoking, pets, sleep_schedule, guests, noise_level, is_complete)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO profiles (user_id, display_name, age, city, neighborhood, gender, housing_status,
+                                    budget_min, budget_max, bio, cleanliness, smoking, pets, sleep_schedule,
+                                    guests, noise_level, is_complete)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING *
             """,
                 (
@@ -96,6 +175,8 @@ def upsert_profile(user_id, profile_data):
                     profile_data["display_name"],
                     profile_data["age"],
                     profile_data["city"],
+                    profile_data["neighborhood"],
+                    profile_data.get("gender", "prefer_not_say"),
                     profile_data["housing_status"],
                     profile_data["budget_min"],
                     profile_data["budget_max"],

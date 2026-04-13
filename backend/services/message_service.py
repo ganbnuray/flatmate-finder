@@ -14,7 +14,7 @@ def validate_match_access(cur, match_id, user_id):
     """
     cur.execute(
         """
-        SELECT id FROM matches 
+        SELECT user_a_id, user_b_id FROM matches
         WHERE id = %s AND status = 'active'
         AND (user_a_id = %s OR user_b_id = %s)
     """,
@@ -23,6 +23,18 @@ def validate_match_access(cur, match_id, user_id):
 
     match = cur.fetchone()
     if not match:
+        raise ValueError("match not found or unauthorized")
+
+    cur.execute(
+        """
+        SELECT 1 FROM blocks
+        WHERE (blocker_id = %s AND blocked_id = %s)
+           OR (blocker_id = %s AND blocked_id = %s)
+    """,
+        (match["user_a_id"], match["user_b_id"], match["user_b_id"], match["user_a_id"]),
+    )
+    blocked = cur.fetchone()
+    if blocked:
         raise ValueError("match not found or unauthorized")
 
 

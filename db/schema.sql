@@ -5,13 +5,14 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- enums
 
-CREATE TYPE housing_status    AS ENUM ('HAS_APARTMENT', 'LOOKING', 'EITHER');
+CREATE TYPE housing_status    AS ENUM ('HAS_APARTMENT', 'LOOKING', 'LOOKING_WITH_FLATMATE', 'EITHER');
 CREATE TYPE cleanliness_level AS ENUM ('very_clean', 'clean', 'moderate', 'relaxed');
 CREATE TYPE smoking_pref      AS ENUM ('non_smoker', 'outside_only', 'smoker', 'no_preference');
 CREATE TYPE pets_pref         AS ENUM ('no_pets', 'has_pets', 'ok_with_pets', 'no_preference');
 CREATE TYPE sleep_schedule    AS ENUM ('early_bird', 'night_owl', 'flexible');
 CREATE TYPE guests_pref       AS ENUM ('rarely', 'sometimes', 'often', 'no_preference');
 CREATE TYPE noise_level       AS ENUM ('quiet', 'moderate', 'lively');
+CREATE TYPE gender_identity   AS ENUM ('woman', 'man', 'non_binary', 'other', 'prefer_not_say');
 CREATE TYPE like_action       AS ENUM ('LIKE', 'PASS');
 CREATE TYPE match_status      AS ENUM ('active', 'unmatched');
 CREATE TYPE report_reason     AS ENUM (
@@ -39,6 +40,8 @@ CREATE TABLE profiles (
     display_name   TEXT              NOT NULL,
     age            INTEGER           NOT NULL CHECK (age >= 18 AND age <= 100),
     city           TEXT              NOT NULL,
+    neighborhood   TEXT              NOT NULL,
+    gender         gender_identity   NOT NULL DEFAULT 'prefer_not_say',
     housing_status housing_status    NOT NULL,
     budget_min     INTEGER           NOT NULL CHECK (budget_min >= 0),
     budget_max     INTEGER           NOT NULL CHECK (budget_max >= budget_min),
@@ -124,6 +127,7 @@ CREATE TABLE reports (
 
 -- speeds up feed queries filtered by city
 CREATE INDEX idx_profiles_city     ON profiles(city);
+CREATE INDEX idx_profiles_neighborhood ON profiles(neighborhood);
 CREATE INDEX idx_profiles_complete ON profiles(is_complete) WHERE is_complete = TRUE;
 
 -- used to exclude users already liked/passed from the feed
