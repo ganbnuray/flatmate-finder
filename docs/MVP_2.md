@@ -52,6 +52,9 @@ MVP 1 is the baseline user journey:
 ### Stages and volume
 
 - Plan: **10–12 interviews per stage**, **3 stages total**.
+- **Stage 1 (discovery):** ✅ Complete — 3 interviews (Fakiya, Daiana, Nataliia). Focus: validate problem, current decision process, mental model of flatmate search.
+- **Stage 2 (usability):** ✅ Complete — 3 interviews (Serge, Patryk, Daiana). Focus: live usability walkthrough of MVP 1; identify comprehension gaps and workflow blockers.
+- **Stage 3 (retention/trust):** Planned after MVP 2 ships.
 
 ### Do we reuse the same questions?
 
@@ -66,6 +69,32 @@ MVP 1 is the baseline user journey:
 Store all interview artifacts in `LBA/`:
 - Prefer one file per interview (raw notes) plus one synthesis file per stage.
 - Tagging/summaries should map to themes like: onboarding friction, decision criteria, trust/safety, messaging expectations, matching mental model, housing_status usefulness.
+
+## Stage 2 key findings (feeds MVP 2 scope)
+
+Synthesised from usability sessions with Serge and Patryk on the live MVP 1 demo:
+
+**Bugs hurting credibility (quick fixes):**
+- Currency displays as £ instead of $ — confusing and looks broken.
+- Text on match/profile cards has low contrast — hard to read.
+- No way to navigate from a match or message thread back to that person's full profile.
+- Message input bar drifts up instead of staying fixed at the bottom of the chat window.
+- Chat thread has no scroll — earlier messages are unreachable.
+- New messages only appear after a full page refresh — no polling or refresh button.
+- No unread-message indicator on the matches list.
+- Email validation is not enforced on signup — fake/garbage emails are accepted.
+
+**Feature gaps users hit during the walkthrough:**
+- The `housing_status` field only covers people who already have a place; Serge and Patryk both noted that looking for a place *and* a flatmate at the same time is very common and the app doesn't represent it.
+- "City" is too coarse — users want to match by neighbourhood/area.
+- Gender is absent from profile cards; users said it's one of their top non-negotiables.
+- No filters anywhere in the discovery feed — described as a dealbreaker for continued use.
+
+**Design & tone:**
+- Dark colour scheme reads as a dating app. Both users said the visual style should feel more "domestic" or "homey."
+- Onboarding bio field has no prompts — users didn't know what to write and left it blank.
+
+---
 
 ## MVP 2 objective:
 
@@ -108,15 +137,53 @@ Customary rule for iteration planning:
      - matches list visibility
      - (if implemented) messaging access rules
 
-### MVP 2 “optional” candidates (only if interviews validate them)
+### MVP 2 “must-fix” candidates — added from Stage 2 interviews
 
-6. **housing_status impact**
-   - Add filters and/or prioritization if users say it’s a primary decision driver.
-   - Otherwise keep it informational to avoid scope creep.
+6. **”Looking for a place + flatmate” housing status**
+   - Add `LOOKING_WITH_FLATMATE` as a third `housing_status` enum value (migration already in `db/migrations/20260411_add_profile_fields.sql`).
+   - Surface the value on profile cards so users can self-filter.
 
-7. **Basic safety UX**
-   - If interviews show concerns, implement a minimal block/report UI loop.
-   - Reporting can remain “no admin UI”, but user submission flow must be clear.
+7. **Neighbourhood / area field**
+   - Replace or augment the coarse `city` field with a `neighbourhood` text field on the profile.
+   - Migration adds the column; onboarding and card display need updating.
+
+8. **Gender field on profile and card**
+   - Gender was the #1 missing field cited by users.
+   - Migration adds `gender_identity` enum and `gender` column; ensure it is visible on discovery cards.
+
+9. **Messaging UX — critical fixes**
+   - Fix message input bar to stay pinned to the bottom of the viewport.
+   - Fix chat scroll so earlier messages are reachable.
+   - Add an in-UI refresh button or lightweight polling so new messages appear without a full page reload.
+   - Add unread-message badge on the matches list.
+
+10. **Display and credibility bugs**
+    - Change currency symbol from £ to $ globally.
+    - Increase text contrast on profile and match cards.
+    - Add a link from a match’s name/avatar in Matches and Chat back to their full profile view.
+
+11. **Email verification on signup**
+    - Enforce basic email format validation; consider a confirmation email before the account is active.
+
+### MVP 2 “should do” candidates (validated by interviews, lower urgency)
+
+12. **Discovery filters**
+    - Most-requested feature across all users; absence described as a dealbreaker for retention.
+    - Minimum viable filter set: budget range, move-in date, neighbourhood, smoking, pets.
+    - Implement only after must-fix items 1–11 are stable.
+
+13. **Bio prompts on onboarding**
+    - Users left the bio blank without guidance.
+    - Add 2–3 example prompts inline (e.g. “What does your typical morning look like?”, “Describe your ideal living situation”).
+
+14. **Basic trust indicators**
+    - At minimum: enforce email verification (covered in item 11).
+    - Optional: display a “verified email” badge on cards.
+    - Social media linking (LinkedIn/Instagram) is a Stage 3 decision.
+
+15. **Design tone adjustment**
+    - Dark palette reads as a dating app; both Stage 2 users flagged it.
+    - Adopt a lighter, more domestic colour scheme before any external user testing.
 
 ## MVP 2 acceptance criteria (how we will verify)
 
@@ -132,8 +199,22 @@ For each MVP 2 selected vertical slice, require:
 4. **Error handling is user-visible but developer-debuggable**
    - Consistent error responses; no silent failures.
 
+## Deferred to V3
+
+These items came up in interviews but are out of scope until MVP 2 is validated:
+
+- **Social media profile linking** (LinkedIn / Instagram) — trust signal, but adds OAuth complexity.
+- **Mutual friends indicator** — requires social graph data not currently collected.
+- **In-app call scheduling** — came up in one Stage 1 interview; not validated as a broad need.
+- **AI-based identity or credit verification** — technically ambitious; longer-term trust feature.
+- **Prior eviction / reference history** — valuable but out of scope for a consumer app at this stage.
+- **Strict vs. flexible preference weighting** — interesting UX concept; worth revisiting after filters ship.
+- **Password reset flow** — came up during testing, not from interviews; needed before public launch but not blocking MVP 2 usability goals.
+
+---
+
 ## What to implement after MVP 2 decisions (next doc updates)
 
-- Update `docs/MVP.md` only when MVP 2 permanently changes what we consider “MVP.”
+- Update `docs/MVP_1.md` only when MVP 2 permanently changes what we consider “MVP 1 baseline.”
 - Update `docs/user-flow-backend.md` as endpoints/logic solidify.
 - Write interview synthesis summaries into `LBA/stage-X/` and link them back to MVP 2 decisions.
