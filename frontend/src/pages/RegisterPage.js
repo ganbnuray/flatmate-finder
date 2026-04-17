@@ -32,6 +32,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [errorCode, setErrorCode] = useState('');
   const [loading, setLoading] = useState(false);
 
   /**
@@ -45,6 +46,7 @@ export default function RegisterPage() {
   async function handleSubmit(event) {
     event.preventDefault();
     setError('');
+    setErrorCode('');
 
     if (password !== confirmPassword) {
       setError('Passwords do not match.');
@@ -63,6 +65,7 @@ export default function RegisterPage() {
       navigate('/onboarding');
     } else {
       setError(result.error || 'Registration failed. Please try again.');
+      setErrorCode(result.code || '');
       setLoading(false);
     }
   }
@@ -82,6 +85,12 @@ export default function RegisterPage() {
                 {error && (
                   <Alert variant="danger" className="mb-3">
                     {error}
+                    {errorCode === 'email_taken' && (
+                      <>
+                        {' '}
+                        <Link to="/login" className="alert-link">Log in instead</Link>
+                      </>
+                    )}
                   </Alert>
                 )}
 
