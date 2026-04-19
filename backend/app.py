@@ -34,7 +34,14 @@ def create_app():
     app.json = JSONProvider(app)
     app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev_secret_key")
 
-    ALLOWED_ORIGIN = "http://localhost:3000"
+    ALLOWED_ORIGIN = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+    is_production = ALLOWED_ORIGIN != "http://localhost:3000"
+
+    # Important for cross-domain cookie sessions (Vercel <-> Railway)
+    app.config.update(
+        SESSION_COOKIE_SAMESITE="None" if is_production else "Lax",
+        SESSION_COOKIE_SECURE=is_production,
+    )
 
     # Initialize the connection pool
     init_db_pool()

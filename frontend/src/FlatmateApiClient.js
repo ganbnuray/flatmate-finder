@@ -23,7 +23,8 @@ export default class FlatmateApiClient {
    */
   async request(options) {
     try {
-      const response = await fetch(options.url, {
+      const baseUrl = process.env.REACT_APP_API_URL || '';
+      const response = await fetch(`${baseUrl}${options.url}`, {
         method: options.method,
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         credentials: 'include',
