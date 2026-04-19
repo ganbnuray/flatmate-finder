@@ -69,6 +69,10 @@ This project follows **GitHub Flow**. Please read [CONTRIBUTING.md](CONTRIBUTING
 | Setup/config | `setup/<short-description>` | `setup/ci-pipeline` |
 | Documentation | `docs/<short-description>` | `docs/api-endpoints` |
 
+### Continuous Integration
+
+Every push and pull request runs two parallel jobs defined in `.github/workflows/ci.yaml`: `backend-test` runs the pytest suite against a testcontainers-managed PostgreSQL instance; `frontend-test` runs `npm test` with Jest. Both jobs target `ubuntu-latest`, which ships with Docker preinstalled (required by testcontainers). Failing tests block the workflow run.
+
 ## Team
 
 | Member | Role |
