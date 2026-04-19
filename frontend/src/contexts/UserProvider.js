@@ -88,7 +88,19 @@ export default function UserProvider({ children }) {
         }
         return { ok: true };
       }
-      return { ok: false, error: 'Invalid email or password.' };
+      if (response.status === 401) {
+        return { ok: false, error: 'Invalid email or password.' };
+      }
+      if (response.status === 403) {
+        return { ok: false, error: 'This account has been deactivated. Contact support for help.' };
+      }
+      if (response.status === 400) {
+        return { ok: false, error: 'Please enter your email and password.' };
+      }
+      if (response.status === 0) {
+        return { ok: false, error: 'Network error. Check your connection and try again.' };
+      }
+      return { ok: false, error: 'Login failed. Please try again.' };
     },
     [api],
   );
@@ -100,7 +112,7 @@ export default function UserProvider({ children }) {
    *
    * @param {string} email - The new account's email address.
    * @param {string} password - The new account's password.
-   * @returns {Promise<{ok: boolean, error?: string}>}
+   * @returns {Promise<{ok: boolean, error?: string, code?: string}>}
    */
   const register = useCallback(
     async (email, password) => {
@@ -109,6 +121,15 @@ export default function UserProvider({ children }) {
         localStorage.setItem('flatmate_session', '1');
         setUser({ user_id: response.body.user_id, email: response.body.email, is_complete: false });
         return { ok: true };
+      }
+      if (response.status === 409) {
+        return { ok: false, error: 'An account with this email already exists.', code: 'email_taken' };
+      }
+      if (response.status === 400) {
+        return { ok: false, error: 'Please enter a valid email and password.' };
+      }
+      if (response.status === 0) {
+        return { ok: false, error: 'Network error. Check your connection and try again.' };
       }
       return { ok: false, error: 'Registration failed. Please try again.' };
     },
