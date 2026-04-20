@@ -2,6 +2,10 @@
 
 A web app that helps students and young professionals find compatible flatmates based on lifestyle preferences, budget, and living habits.
 
+**Deployed app**:  
+
+**Demo Video**: [demo video](https://youtu.be/SXHQTnzN03E)
+
 ## Problem Statement
 
 Students and young professionals often struggle to find compatible flatmates through existing channels such as Facebook groups or generic housing platforms. These spaces are fragmented, hard to filter, and focus mostly on the room rather than the person — leading to mismatched lifestyles, wasted time, and uncomfortable living situations.
