@@ -31,7 +31,7 @@ graph TD
     %% Backend Layer
     subgraph Server ["Server Side (Railway)"]
         Router[Flask App / Routing]
-        AuthGuard[@login_required Guard]
+        AuthGuard[Login Required Guard]
         
         subgraph Services ["Service Layer (Business Logic)"]
             Profile[Profile Service]
