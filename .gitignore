@@ -40,3 +40,6 @@ coverage/
 ._*
 .Spotlight-V100
 .Trashes
+
+# Docker
+pgdata/
