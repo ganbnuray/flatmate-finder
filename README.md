@@ -20,7 +20,7 @@ Flatmate Finder is a structured, profile-driven platform that helps users quickl
 ### Architecture Diagram
 
 ```mermaid
-graph LR
+graph TD
     %% Frontend Layer
     subgraph Client ["Client Side (Vercel)"]
         UI[React Components]
