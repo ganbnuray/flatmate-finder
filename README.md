@@ -50,6 +50,26 @@ cp .env.example .env
 
 The script installs dependencies, then starts the backend and frontend. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+### Running with Docker (reproducible demo)
+
+For a fully containerized setup with no host Python, Node, or Postgres required:
+
+```bash
+docker compose up --build
+```
+
+Open [http://localhost:3000](http://localhost:3000). The stack includes Postgres (initialized from `db/schema.sql` on first run), the Flask backend served by gunicorn, and the React build served by nginx which also proxies API calls to the backend.
+
+To stop: `Ctrl+C`, then `docker compose down`.
+
+To reset the database (wipe the `pgdata` volume and re-run `schema.sql` on next start):
+
+```bash
+docker compose down -v
+```
+
+This mode is for reproducible demos and onboarding. For daily development with hot reload, keep using `./dev-start.sh`. Do not run both at the same time, they both bind host port 3000.
+
 ## Running Tests
 
 Tests require Docker to be running. They use [testcontainers](https://testcontainers-python.readthedocs.io/) to spin up a disposable PostgreSQL database, so they never touch the production database.
