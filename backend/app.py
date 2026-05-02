@@ -4,6 +4,7 @@ import psycopg2
 from datetime import datetime, date
 from flask import Flask, jsonify, make_response, request, session
 from flask.json.provider import DefaultJSONProvider
+from flask_cors import CORS
 from dotenv import load_dotenv
 
 from decorators import login_required
@@ -34,13 +35,22 @@ def create_app():
     app.json = JSONProvider(app)
     app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev_secret_key")
 
-    ALLOWED_ORIGIN = os.environ.get("FRONTEND_URL", "http://localhost:3000")
-    is_production = ALLOWED_ORIGIN != "http://localhost:3000"
+    frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+    allowed_origins = [o.strip().rstrip("/") for o in frontend_url.split(",") if o.strip()]
+    is_production = allowed_origins and allowed_origins[0] != "http://localhost:3000"
 
     # Important for cross-domain cookie sessions (Vercel <-> Railway)
     app.config.update(
         SESSION_COOKIE_SAMESITE="None" if is_production else "Lax",
         SESSION_COOKIE_SECURE=is_production,
+    )
+
+    CORS(
+        app,
+        resources={r"/*": {"origins": allowed_origins}},
+        supports_credentials=True,
+        allow_headers=["Content-Type"],
+        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     )
 
     # Initialize the connection pool
@@ -51,21 +61,6 @@ def create_app():
         # We don't close the whole pool per-request, but we can close it
         # here if needed for clean shutdown. Usually the pool persists.
         pass
-
-    @app.after_request
-    def add_cors_headers(response):
-        response.headers["Access-Control-Allow-Origin"] = ALLOWED_ORIGIN
-        response.headers["Access-Control-Allow-Credentials"] = "true"
-        response.headers["Access-Control-Allow-Methods"] = (
-            "GET, POST, PUT, DELETE, OPTIONS"
-        )
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
-        return response
-
-    @app.before_request
-    def handle_preflight():
-        if request.method == "OPTIONS":
-            return jsonify({}), 200
 
     @app.route("/auth/register", methods=["POST"])
     def register():

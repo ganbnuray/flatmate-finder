@@ -12,7 +12,7 @@ Students and young professionals often struggle to find compatible flatmates thr
 
 Flatmate Finder is a structured, profile-driven platform that helps users quickly identify and connect with potential flatmates based on compatibility factors like budget, habits, and preferences.
 
-## Tech Stack
+## Tech Stack & Architecture
 
 | Layer | Technology |
 |-------|-----------|
@@ -20,6 +20,49 @@ Flatmate Finder is a structured, profile-driven platform that helps users quickl
 | Styling | Bootstrap 5 + custom CSS |
 | Backend | Flask (Python) |
 | Database | PostgreSQL |
+
+### Architecture Diagram
+
+```mermaid
+graph TD
+    %% Frontend Layer
+    subgraph Client ["Client Side (Vercel)"]
+        UI[React Components]
+        Context[React Context / State]
+        APIClient[FlatmateApiClient]
+    end
+
+    %% Backend Layer
+    subgraph Server ["Server Side (Railway)"]
+        Router[Flask App / Routing]
+        AuthGuard[Login Required Guard]
+        
+        subgraph Services ["Service Layer (Business Logic)"]
+            Profile[Profile Service]
+            Match[Match Service]
+            Message[Message Service]
+            Like[Like Service]
+        end
+        
+        Pool[psycopg2 Connection Pool]
+    end
+
+    %% Data Layer
+    subgraph Database ["Database (Supabase)"]
+        PostgreSQL[(PostgreSQL)]
+    end
+
+    %% Connections
+    UI <-->|User Interaction| Context
+    Context <--> APIClient
+    APIClient <-->|HTTP JSON Requests| Router
+    Router --> AuthGuard
+    AuthGuard -->|Delegates Logic| Services
+    Services --> Pool
+    Pool <-->|SQL Queries| PostgreSQL
+```
+
+*Separation of Concerns:* The application isolates UI/UX code in React components, HTTP/Routing in Flask (`app.py`), Business Logic in the Python `services/` directory, and Data persistence in PostgreSQL.
 
 ## Getting Started
 
